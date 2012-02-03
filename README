@@ -1,0 +1,14 @@
+PHP Websockets
+==============
+
+A Websockets server written in PHP.
+-----------------------------------
+
+This project provides the functionality of an RFC-6455 Websockets server.  It can be used as a stand-alone server, or as the back-end of a normal HTTP server that is Websockets aware.
+
+To use:
+
+Do not place the files in your web server's document root -- they are not intended to be ran through CGI.  They are intended to be ran through PHP's Command Line Interface (CLI).
+
+The main class, `WebsocketServer`, is intended to be inherrited by your class, and the methods `open`, `close`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
+
