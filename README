@@ -10,5 +10,5 @@ To use:
 
 Do not place the files in your web server's document root -- they are not intended to be ran through CGI.  They are intended to be ran through PHP's Command Line Interface (CLI).
 
-The main class, `WebsocketServer`, is intended to be inherrited by your class, and the methods `open`, `close`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
+The main class, `WebsocketServer`, is intended to be inherrited by your class, and the methods `connected`, `closed`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
 
