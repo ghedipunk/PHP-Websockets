@@ -1,10 +1,17 @@
 <?php
 
-class Users {
+class WebSocketUser {
 
 	public $socket;
 	public $id;
 	public $headers = array();
+	public $handshake = false;
+
+	public $handlingPartialPacket = false;
+	public $partialBuffer = "";
+
+	public $sendingContinuous = false;
+	public $partialMessage = "";
 
 	function __construct($id,$socket) {
 		$this->id = $id;

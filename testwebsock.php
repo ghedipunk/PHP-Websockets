@@ -1,10 +1,13 @@
+#! /usr/local/bin/php
 <?php
 
-require_once('websockets.php');
+require_once('./websockets.php');
 
 class echoServer extends WebSocketServer {
-	protected function process ($user,$message) {
-		$this->send($user->socket,$message);
+	//protected $maxBufferSize = 1048576; //1MB... overkill for an echo server, but potentially plausible for other applications.
+	
+	protected function process ($user, $message) {
+		$this->send($user,$message);
 	}
 	
 	protected function connected ($user) {
@@ -19,3 +22,5 @@ class echoServer extends WebSocketServer {
 		// has been closed, so there is no need to clean up the socket itself here.
 	}
 }
+
+$echo = new echoServer("0.0.0.0","9000");
