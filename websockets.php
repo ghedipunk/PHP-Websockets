@@ -48,6 +48,16 @@ abstract class WebSocketServer {
 						} else {
 							if ($message = $this->deframe($buffer,$user)) {
 								$this->process($user,$message);
+							} else {
+								do {
+									$numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,MSG_PEEK);
+									if ($numByte > 0) {
+										$numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,0);
+										if ($message = $this->deframe($buffer,$user)) {
+											$this->process($user,$message);
+										}
+									}
+								} while($numByte > 0);
 							}
 						}
 					}
@@ -61,7 +71,7 @@ abstract class WebSocketServer {
 	abstract protected function closed($user);           // Called after the connection is closed.
 	
 	protected function send($user,$message) {
-		$this->stdout("> $message");
+		//$this->stdout("> $message");
 		$message = $this->frame($message,$user);
 		socket_write($user->socket,$message,strlen($message));
 	}
@@ -227,6 +237,7 @@ abstract class WebSocketServer {
 		//echo $this->strtohex($message);
 		$headers = $this->extractHeaders($message);
 		$pongReply = false;
+		$willClose = false;
 		switch($headers['opcode']) {
 			case 0:
 			case 1:
@@ -234,22 +245,31 @@ abstract class WebSocketServer {
 				break;
 			case 8:
 				// todo: close the connection
-				return false;
+				$willClose = true;
+				break;
 			case 9:
 				$pongReply = true;
 			case 10:
 				break;
 			default:
 				//$this->disconnect($user); // todo: fail connection
-				return false;
+				$willClose = true;
+				break;
+		}
+
+		if ($user->handlingPartialPacket) {
+			$message = $user->partialBuffer . $message;
+			$user->handlingPartialPacket = false;
+			return $this->deframe($message, $user);
 		}
 
 		if ($this->checkRSVBits($headers,$user)) {
 			return false;
 		}
 		
-		if ($user->handlingPartialPacket) {
-			$message = $user->partialBuffer . $message;
+		if ($willClose) {
+			// todo: fail the connection
+			return false;
 		}
 
 		$payload = $user->partialMessage . $this->extractPayload($message,$headers);
@@ -265,7 +285,6 @@ abstract class WebSocketServer {
 			$user->partialBuffer = $message;
 			return false;
 		}
-		$user->handlingPartialPacket = false;
 		
 		$payload = $this->applyMask($headers,$payload);
 		
@@ -309,8 +328,8 @@ abstract class WebSocketServer {
 		} elseif ($header['hasmask']) {
 			$header['mask'] = $message[2] . $message[3] . $message[4] . $message[5];
 		}
-		echo $this->strtohex($message);
-		$this->printHeaders($header);
+		//echo $this->strtohex($message);
+		//$this->printHeaders($header);
 		return $header;
 	}
 	
@@ -356,10 +375,16 @@ abstract class WebSocketServer {
 		for ($i = 0; $i < strlen($str); $i++) {
 			$strout .= (ord($str[$i])<16) ? "0" . dechex(ord($str[$i])) : dechex(ord($str[$i]));
 			$strout .= " ";
-			if ($i%8 == 3) {
+			if ($i%32 == 7) {
 				$strout .= ": ";
 			}
-			if ($i%8 == 7) {
+			if ($i%32 == 15) {
+				$strout .= ": ";
+			}
+			if ($i%32 == 23) {
+				$strout .= ": ";
+			}
+			if ($i%32 == 31) {
 				$strout .= "\n";
 			}
 		}
