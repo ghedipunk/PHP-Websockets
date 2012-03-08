@@ -5,12 +5,15 @@ require_once('./users.php');
 
 abstract class WebSocketServer {
 
-	protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class must inherit from websocketUser.
+	protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class must inherit from WebSocketUser.
 	protected $maxBufferSize;        
 	protected $master;
-	protected $sockets     = array();
-	protected $users       = array();
-	protected $interactive = true;
+	protected $sockets                              = array();
+	protected $users                                = array();
+	protected $interactive                          = true;
+	protected $headerOriginRequired                 = false;
+	protected $headerSecWebSocketProtocolRequired   = false;
+	protected $headerSecWebSocketExtensionsRequired = false;
 	
 	function __construct($addr, $port, $bufferLength = 2048) {
 		$this->maxBufferSize = $bufferLength;
@@ -83,7 +86,7 @@ abstract class WebSocketServer {
 		$this->connected($user);
 	}
 
-	protected function disconnect($socket) {
+	protected function disconnect($socket,$triggerClosed=true) {
 		$foundUser = null;
 		$foundSocket = null;
 		foreach ($this->users as $key => $user) {
@@ -107,30 +110,67 @@ abstract class WebSocketServer {
 			unset($this->sockets[$foundSocket]);
 			$this->sockets = array_values($this->sockets);
 		}
-		$this->closed($disconnectedUser);
+		if ($triggerClosed) {
+			$this->closed($disconnectedUser);
+		}
 	}
 	
 	protected function doHandshake($user, $buffer) {
 		$magicGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-		preg_match("/GET (.*) HTTP/i", $buffer, $reqResource);    // todo: set up dynamic classes based on this requested resource
-		preg_match("/Host:(.*)\r\n/i", $buffer, $reqHost);
-		preg_match("/Upgrade:(.*)\r\n/i", $buffer, $reqUpgrade); // should always be "websocket", although we'll leave it up to the implementer of the inheritting class to determin if this matters
-		preg_match("/Connection:(.*)\r\n/i", $buffer, $reqConnection); // should always be "Upgrade", again leave it up to the implementer
-		preg_match("/Sec-WebSocket-Key:(.*)\r\n/i", $buffer, $reqSecWebSocketKey);
-		preg_match("/Origin:(.*)\r\n/i", $buffer, $reqOrigin);
-		//preg_match("/Sec-WebSocket-Protocol:(.*)\r\n/i", $buffer, $reqSecWebSocketProtocol);
-		preg_match("/Sec-WebSocket-Version:(.*)\r\n/i", $buffer, $reqSecWebSocketVersion);
-		preg_match("/Cookie:(.*)\r\n/i", $buffer, $reqRawCookies);
+		$headers = array();
 		
-		$user->headers['resource'] = trim($reqResource[1]);
-		$user->headers['host'] = trim($reqHost[1]);
-		$user->headers['upgrade'] = trim($reqUpgrade[1]);
-		$user->headers['connection'] = trim($reqConnection[1]);
-		$user->headers['secWebSocketKey'] = trim($reqSecWebSocketKey[1]);
-		$user->headers['origin'] = trim($reqOrigin[1]);
-		//$user->headers['secWebSocketProtocol'] = trim($reqSecWebSocketProtocol[1]);
-		$user->headers['secWebSocketVersion'] = trim($reqSecWebSocketVersion[1]);
-		//$user->headers['cookie'] = trim($reqRawCookies[1]); // todo: parse the key/value pairs into an array.
+		$lines = explode("\n",$buffer);
+		foreach ($lines as $line) {
+			if (strpos($line,":") !== false) {
+				$header = explode(":",$line,2);
+				$headers[strtolower(trim($header[0]))] = trim($header[1]);
+			} else if (stripos($line,"get ") !== false) {
+				preg_match("/GET (.*) HTTP/i", $buffer, $reqResource);
+				$header['get'] = trim($reqResource[1]);
+			}
+		}
+		
+		if (isset($headers['get'])) {
+			$user->requestedResource = $headers['get'];
+		} else {
+			// todo: fail the connection
+			$handshakeResponse = "HTTP/1.1 405 Method Not Allowed\r\n\r\n";			
+		}
+		if (!isset($headers['host'] || !$this->checkHost($headers['host'])) {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		}
+		if (!isset($headers['upgrade']) || strtolower($headers['upgrade']) != 'websocket') {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		} 
+		if (!isset($headers['connection']) || strtolower($headers['connection']) != 'upgrade') {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		}
+		if (!isset($headers['sec-websocket-key'])) {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		} else {
+			
+		}
+		if (!isset($headers['sec-websocket-version']) || strtolower($headers['sec-websocket-version']) != 13) {
+			$handshakeResponse = "HTTP/1.1 426 Upgrade Required\r\nSec-WebSocketVersion: 13";
+		}
+		if (($this->headerOriginRequired && !isset($headers['origin']) ) || ($this->headerOriginRequired && !$this->checkOrigin($headers['origin']))) {
+			$handshakeResponse = "HTTP/1.1 403 Forbidden";
+		}
+		if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol']) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($header['sec-websocket-protocol']))) {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		}
+		if (($this->headerSecWebSocketExtensionsRequired && !isset($headers['sec-websocket-extensions']) || ($this->headerSecWebSocketExtensionsRequired && !$this->checkWebsocExtensions($header['sec-websocket-extensions']))) {
+			$handshakeResponse = "HTTP/1.1 400 Bad Request";
+		}
+		
+		// Done verifying the _required_ headers and optionally required headers.
+		
+		if (isset($handshakeResponse)) {
+			socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+			$this->disconnect($user->socket);
+			return false;
+		}
+		
 		
 		$user->handshake = $buffer;
 		
@@ -141,8 +181,40 @@ abstract class WebSocketServer {
 			$rawToken .= chr(hexdec(substr($webSocketKeyHash,$i*2, 2)));
 		}
 		$handshakeToken = base64_encode($rawToken);
-		$handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken\r\n\r\n";
+		
+		$subProtocol = (isset($headers['sec-websocket-protocol'])) ? $this->processProtocol($headers['sec-websocket-protocol']) : "";
+		$extensions = (isset($headers['sec-websocket-extensions'])) ? $this->processExtensions($headers['sec-websocket-extensions']) : "";
+		
+		$handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n\r\n";
 		socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+	}
+	
+	protected function checkHost($hostName) {
+		return true; // Override and return false if the host is not one that you would expect.
+				     // Ex: You only want to accept hosts from the my-domain.com domain,
+					 // but you receive a host from malicious-site.com instead.
+	}
+	
+	protected function checkOrigin($origin) {
+		return true; // Override and return false if the origin is not one that you would expect.
+	}
+	
+	protected function checkWebsocProtocol($protocol) {
+		return true; // Override and return false if a protocol is not found that you would expect.
+	}
+	
+	protected function checkWebsocExtensions($extensions) {
+		return true; // Override and return false if an extension is not found that you would expect.
+	}
+	
+	protected function processProtocol($protocol) {
+		return ""; // return either "\r\nSec-WebSocket-Protocol: SelectedProtocolFromClientList" or return an empty string.  
+				   // The carriage return/newline combo must appear at the beginning of a non-empty string, and must not
+				   // appear at the end of the string nor in an otherwise empty string.
+	}
+	
+	protected function processExtensions($extensions) {
+		return ""; // return either "\r\nSec-WebSocket-Extensions: SelectedExtensions" or return an empty string.
 	}
 	
 	protected function getUserBySocket($socket) {
