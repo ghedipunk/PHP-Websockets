@@ -118,7 +118,6 @@ abstract class WebSocketServer {
 	protected function doHandshake($user, $buffer) {
 		$magicGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 		$headers = array();
-		
 		$lines = explode("\n",$buffer);
 		foreach ($lines as $line) {
 			if (strpos($line,":") !== false) {
@@ -126,17 +125,16 @@ abstract class WebSocketServer {
 				$headers[strtolower(trim($header[0]))] = trim($header[1]);
 			} else if (stripos($line,"get ") !== false) {
 				preg_match("/GET (.*) HTTP/i", $buffer, $reqResource);
-				$header['get'] = trim($reqResource[1]);
+				$headers['get'] = trim($reqResource[1]);
 			}
 		}
-		
 		if (isset($headers['get'])) {
 			$user->requestedResource = $headers['get'];
 		} else {
 			// todo: fail the connection
 			$handshakeResponse = "HTTP/1.1 405 Method Not Allowed\r\n\r\n";			
 		}
-		if (!isset($headers['host'] || !$this->checkHost($headers['host'])) {
+		if (!isset($headers['host']) || !$this->checkHost($headers['host'])) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
 		if (!isset($headers['upgrade']) || strtolower($headers['upgrade']) != 'websocket') {
@@ -156,10 +154,10 @@ abstract class WebSocketServer {
 		if (($this->headerOriginRequired && !isset($headers['origin']) ) || ($this->headerOriginRequired && !$this->checkOrigin($headers['origin']))) {
 			$handshakeResponse = "HTTP/1.1 403 Forbidden";
 		}
-		if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol']) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($header['sec-websocket-protocol']))) {
+		if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol'])) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($header['sec-websocket-protocol']))) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
-		if (($this->headerSecWebSocketExtensionsRequired && !isset($headers['sec-websocket-extensions']) || ($this->headerSecWebSocketExtensionsRequired && !$this->checkWebsocExtensions($header['sec-websocket-extensions']))) {
+		if (($this->headerSecWebSocketExtensionsRequired && !isset($headers['sec-websocket-extensions'])) || ($this->headerSecWebSocketExtensionsRequired && !$this->checkWebsocExtensions($header['sec-websocket-extensions']))) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
 		
@@ -171,21 +169,21 @@ abstract class WebSocketServer {
 			return false;
 		}
 		
-		
+		$user->headers = $headers;
 		$user->handshake = $buffer;
 		
-		$webSocketKeyHash = sha1($user->headers['secWebSocketKey'] . $magicGUID);
+		$webSocketKeyHash = sha1($headers['sec-websocket-key'] . $magicGUID);
 		
 		$rawToken = "";
 		for ($i = 0; $i < 20; $i++) {
 			$rawToken .= chr(hexdec(substr($webSocketKeyHash,$i*2, 2)));
 		}
-		$handshakeToken = base64_encode($rawToken);
+		$handshakeToken = base64_encode($rawToken) . "\r\n";
 		
 		$subProtocol = (isset($headers['sec-websocket-protocol'])) ? $this->processProtocol($headers['sec-websocket-protocol']) : "";
 		$extensions = (isset($headers['sec-websocket-extensions'])) ? $this->processExtensions($headers['sec-websocket-extensions']) : "";
 		
-		$handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n\r\n";
+		$handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n";
 		socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
 	}
 	
@@ -208,13 +206,14 @@ abstract class WebSocketServer {
 	}
 	
 	protected function processProtocol($protocol) {
-		return ""; // return either "\r\nSec-WebSocket-Protocol: SelectedProtocolFromClientList" or return an empty string.  
-				   // The carriage return/newline combo must appear at the beginning of a non-empty string, and must not
-				   // appear at the end of the string nor in an otherwise empty string.
+		return ""; // return either "Sec-WebSocket-Protocol: SelectedProtocolFromClientList\r\n" or return an empty string.  
+				   // The carriage return/newline combo must appear at the end of a non-empty string, and must not
+				   // appear at the beginning of the string nor in an otherwise empty string, or it will be considered part of 
+				   // the response body, which will trigger an error in the client as it will not be formatted correctly.
 	}
 	
 	protected function processExtensions($extensions) {
-		return ""; // return either "\r\nSec-WebSocket-Extensions: SelectedExtensions" or return an empty string.
+		return ""; // return either "Sec-WebSocket-Extensions: SelectedExtensions\r\n" or return an empty string.
 	}
 	
 	protected function getUserBySocket($socket) {
