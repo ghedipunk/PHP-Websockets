@@ -140,7 +140,7 @@ abstract class WebSocketServer {
 		if (!isset($headers['upgrade']) || strtolower($headers['upgrade']) != 'websocket') {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		} 
-		if (!isset($headers['connection']) || strtolower($headers['connection']) != 'upgrade') {
+		if (!isset($headers['connection']) || strpos(strtolower($headers['connection']), 'upgrade') === FALSE) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
 		if (!isset($headers['sec-websocket-key'])) {
