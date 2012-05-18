@@ -14,4 +14,17 @@ Do not place the files in your web server's document root -- they are not intend
 
 The main class, `WebSocketServer`, is intended to be inherrited by your class, and the methods `connected`, `closed`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
 
-Future plans include supporting older draft versions, and allowing child processes forked from the controlling daemon to support broadcasts and to relay data from one socket in a child process to another socket in a separate child proccess.
+Future plans include allowing child processes forked from the controlling daemon to support broadcasts and to relay data from one socket in a child process to another socket in a separate child proccess.
+
+Browser Support
+---------------
+
+Google Chrome 
+
+Mozilla Firefox
+
+Internet Explorer 10 (not yet released to public)
+
+Safari Nightly Build (not yet released to public)
+
+Note: Safari is not supported because it does not support RFC-6455, it supports the old hixie-76/hybi-00 versions, which is a potential security issue.  Because of these potential security issues, I am no longer planning to support older versions of the WebSocket protocol.
