@@ -70,8 +70,13 @@ abstract class WebSocketServer {
 	}
 	
 	abstract protected function process($user,$message); // Calked immediately when the data is recieved. 
-	abstract protected function connected($user);        // Called after the connection is established.
+	abstract protected function connected($user);        // Called after the handshake response is sent to the client.
 	abstract protected function closed($user);           // Called after the connection is closed.
+	
+	protected function connecting($user) {
+		// Override to handle a connecting user, after the instance of the User is created, but before
+		// the handshake has completed.
+	}
 	
 	protected function send($user,$message) {
 		//$this->stdout("> $message");
@@ -83,7 +88,7 @@ abstract class WebSocketServer {
 		$user = new $this->userClass(uniqid(),$socket);
 		array_push($this->users,$user);
 		array_push($this->sockets,$socket);
-		$this->connected($user);
+		$this->connecting($user);
 	}
 
 	protected function disconnect($socket,$triggerClosed=true) {
@@ -185,6 +190,7 @@ abstract class WebSocketServer {
 		
 		$handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n";
 		socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+		$this->connected($user);
 	}
 	
 	protected function checkHost($hostName) {
