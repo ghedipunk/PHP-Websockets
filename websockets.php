@@ -26,7 +26,7 @@ abstract class WebSocketServer {
 
 		while(true) {
 			if (empty($this->sockets)) {
-				$this->sockets[] = $master;
+				$this->sockets[] = $this->master;
 			}
 			$read = $this->sockets;
 			$write = $except = null;
@@ -50,7 +50,7 @@ abstract class WebSocketServer {
 							$this->doHandshake($user,$buffer);
 						} else {
               if ($message = $this->deframe($buffer, $user)) {
-                $this->process($user, utf8_encode($message));
+                $this->process($user, utf8_encode($message)); // todo this can not be correct! 
                 if($user->hasSentClose) {
                   $this->disconnect($user->socket);
                 }
@@ -165,10 +165,10 @@ abstract class WebSocketServer {
 		if (($this->headerOriginRequired && !isset($headers['origin']) ) || ($this->headerOriginRequired && !$this->checkOrigin($headers['origin']))) {
 			$handshakeResponse = "HTTP/1.1 403 Forbidden";
 		}
-		if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol'])) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($header['sec-websocket-protocol']))) {
+		if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol'])) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($headers['sec-websocket-protocol']))) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
-		if (($this->headerSecWebSocketExtensionsRequired && !isset($headers['sec-websocket-extensions'])) || ($this->headerSecWebSocketExtensionsRequired && !$this->checkWebsocExtensions($header['sec-websocket-extensions']))) {
+		if (($this->headerSecWebSocketExtensionsRequired && !isset($headers['sec-websocket-extensions'])) || ($this->headerSecWebSocketExtensionsRequired && !$this->checkWebsocExtensions($headers['sec-websocket-extensions']))) {
 			$handshakeResponse = "HTTP/1.1 400 Bad Request";
 		}
 
@@ -177,7 +177,7 @@ abstract class WebSocketServer {
 		if (isset($handshakeResponse)) {
 			socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
 			$this->disconnect($user->socket);
-			return false;
+			return;
 		}
 
 		$user->headers = $headers;
