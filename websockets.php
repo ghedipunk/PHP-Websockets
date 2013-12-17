@@ -49,6 +49,10 @@ abstract class WebSocketServer {
           } else {
             $user = $this->getUserBySocket($socket);
             if (!$user->handshake) {
+              $tmp = str_replace("\r", '', $buffer);
+              if (strpos($tmp, "\n\n") === false ) {
+                continue; // If the client has not finished sending the header, then wait before sending our upgrade response.
+              }
               $this->doHandshake($user,$buffer);
             } else {
               if (($message = $this->deframe($buffer, $user)) !== FALSE) {
