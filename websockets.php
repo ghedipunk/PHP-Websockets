@@ -39,7 +39,7 @@ abstract class WebSocketServer {
   protected function send($user,$message) {
     //$this->stdout("> $message");
     $message = $this->frame($message,$user);
-    socket_write($user->socket,$message,strlen($message));
+    $result = @socket_write($user->socket, $message, strlen($message));
   }
 
   /**
@@ -90,7 +90,9 @@ abstract class WebSocketServer {
                   $this->disconnect($user->socket);
                   $this->stdout("Client disconnected. Sent close: " . $socket);
                 }
-                $this->process($user, $message); // todo: Re-check this.  Should already be UTF-8.
+                else {
+                  $this->process($user, $message); // todo: Re-check this.  Should already be UTF-8.
+                }
               } 
               else {
                 do {
@@ -102,7 +104,9 @@ abstract class WebSocketServer {
                         $this->disconnect($user->socket);
                         $this->stdout("Client disconnected. Sent close: " . $socket);
                       }
-                      $this->process($user,$message);
+                      else {
+                       $this->process($user,$message);
+                      }
                     }
                   }
                 } while($numByte > 0);
@@ -121,7 +125,7 @@ abstract class WebSocketServer {
     $this->connecting($user);
   }
 
-  protected function disconnect($socket, $triggerClosed=true) {
+  protected function disconnect($socket, $triggerClosed = true) {
     $foundUser = null;
     $foundSocket = null;
     foreach ($this->users as $key => $user) {
@@ -134,6 +138,8 @@ abstract class WebSocketServer {
     if ($foundUser !== null) {
       unset($this->users[$foundUser]);
       $this->users = array_values($this->users);
+      $message = $this->frame('', $disconnectedUser, 'close');
+      @socket_write($disconnectedUser->socket, $message, strlen($message));
     }
     foreach ($this->sockets as $key => $sock) {
       if ($sock == $socket) {
@@ -228,8 +234,8 @@ abstract class WebSocketServer {
 
   protected function checkHost($hostName) {
     return true; // Override and return false if the host is not one that you would expect.
-             // Ex: You only want to accept hosts from the my-domain.com domain,
-           // but you receive a host from malicious-site.com instead.
+                 // Ex: You only want to accept hosts from the my-domain.com domain,
+                 // but you receive a host from malicious-site.com instead.
   }
 
   protected function checkOrigin($origin) {
