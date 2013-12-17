@@ -24,6 +24,26 @@ abstract class WebSocketServer {
     $this->sockets[] = $this->master;
     $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
 
+    
+  }
+
+  abstract protected function process($user,$message); // Called immediately when the data is recieved. 
+  abstract protected function connected($user);        // Called after the handshake response is sent to the client.
+  abstract protected function closed($user);           // Called after the connection is closed.
+
+  protected function connecting($user) {
+    // Override to handle a connecting user, after the instance of the User is created, but before
+    // the handshake has completed.
+  }
+  
+  protected function send($user,$message) {
+    //$this->stdout("> $message");
+    $message = $this->frame($message,$user);
+    socket_write($user->socket,$message,strlen($message));
+  }
+
+  public function run() {
+    
     while(true) {
       if (empty($this->sockets)) {
         $this->sockets[] = $this->master;
@@ -81,21 +101,6 @@ abstract class WebSocketServer {
         }
       }
     }
-  }
-
-  abstract protected function process($user,$message); // Calked immediately when the data is recieved. 
-  abstract protected function connected($user);        // Called after the handshake response is sent to the client.
-  abstract protected function closed($user);           // Called after the connection is closed.
-
-  protected function connecting($user) {
-    // Override to handle a connecting user, after the instance of the User is created, but before
-    // the handshake has completed.
-  }
-  
-  protected function send($user,$message) {
-    //$this->stdout("> $message");
-    $message = $this->frame($message,$user);
-    socket_write($user->socket,$message,strlen($message));
   }
 
   protected function connect($socket) {

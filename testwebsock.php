@@ -24,3 +24,4 @@ class echoServer extends WebSocketServer {
 }
 
 $echo = new echoServer("0.0.0.0","9000");
+$echo->run();
