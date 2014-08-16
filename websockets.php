@@ -21,7 +21,7 @@ abstract class WebSocketServer {
     socket_set_option($this->master, SOL_SOCKET, SO_REUSEADDR, 1) or die("Failed: socket_option()");
     socket_bind($this->master, $addr, $port)                      or die("Failed: socket_bind()");
     socket_listen($this->master,20)                               or die("Failed: socket_listen()");
-    $this->sockets[] = $this->master;
+    $this->sockets['m'] = $this->master;
     $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
 
     
@@ -46,10 +46,9 @@ abstract class WebSocketServer {
    * Main processing loop
    */
   public function run() {
-
     while(true) {
       if (empty($this->sockets)) {
-        $this->sockets[] = $this->master;
+        $this->sockets['m'] = $this->master;
       }
       $read = $this->sockets;
       $write = $except = null;
@@ -119,40 +118,30 @@ abstract class WebSocketServer {
   }
 
   protected function connect($socket) {
-    $user = new $this->userClass(uniqid(), $socket);
-    array_push($this->users, $user);
-    array_push($this->sockets, $socket);
+    $user = new $this->userClass(uniqid('u'), $socket);
+    $this->users[$user->id] = $user;
+    $this->sockets[$user->id] = $socket;
     $this->connecting($user);
   }
 
   protected function disconnect($socket, $triggerClosed = true) {
-    $foundUser = null;
-    $foundSocket = null;
-    foreach ($this->users as $key => $user) {
-      if ($user->socket == $socket) {
-        $foundUser = $key;
-        $disconnectedUser = $user;
-        break;
+    $disconnectedUser = $this->getUserBySocket($socket);
+    
+    if ($disconnectedUser !== null) {
+      unset($this->users[$disconnectedUser->id]);
+        
+      if (array_key_exists($disconnectedUser->id, $this->sockets)) {
+        unset($this->sockets[$disconnectedUser->id]);
       }
-    }
-    if ($foundUser !== null) {
-      unset($this->users[$foundUser]);
-      $this->users = array_values($this->users);
-      $message = $this->frame('', $disconnectedUser, 'close');
-      @socket_write($disconnectedUser->socket, $message, strlen($message));
-    }
-    foreach ($this->sockets as $key => $sock) {
-      if ($sock == $socket) {
-        $foundSocket = $key;
-        break;
+        
+      if ($triggerClosed) {
+        $this->closed($disconnectedUser);
+        socket_close($disconnectedUser->socket);
       }
-    }
-    if ($foundSocket !== null) {
-      unset($this->sockets[$foundSocket]);
-      $this->sockets = array_values($this->sockets);
-    }
-    if ($triggerClosed) {
-      $this->closed($disconnectedUser);
+      else {
+        $message = $this->frame('', $disconnectedUser, 'close');
+        @socket_write($disconnectedUser->socket, $message, strlen($message));
+      }
     }
   }
 
