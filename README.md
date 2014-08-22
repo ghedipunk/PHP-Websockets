@@ -19,18 +19,13 @@ Future plans include allowing child processes forked from the controlling daemon
 Browser Support
 ---------------
 
-Broswer Name        Earliest Version
-
-Google Chrome       16
-
-Mozilla Firefox     11
-
-Internet Explorer   10
-
-Safari              6
-
-Opera               12.10
-
-Android Browser     4.4
+|Broswer Name |Earliest Version |
+|:------------|---------------------:|
+|Google Chrome |16 |
+|Mozilla Firefox |11 |
+|Internet Explorer |10 |
+|Safari |6 |
+|Opera |12.10 |
+|Android Browser |4.4|
 
 Note: Current browser support is available at http://en.wikipedia.org/wiki/WebSocket#Browser_support under the RFC-6455 row.
