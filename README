@@ -19,12 +19,18 @@ Future plans include allowing child processes forked from the controlling daemon
 Browser Support
 ---------------
 
-Google Chrome 
+Broswer Name        Earliest Version
 
-Mozilla Firefox
+Google Chrome       16
 
-Internet Explorer 10
+Mozilla Firefox     11
 
-Safari Nightly Build (not yet released to public)
+Internet Explorer   10
 
-Note: Safari is not supported because it does not support RFC-6455, it supports the old hixie-76/hybi-00 versions, which is a potential security issue.  Because of these potential security issues, I am no longer planning to support older versions of the WebSocket protocol.
+Safari              6
+
+Opera               12.10
+
+Android Browser     4.4
+
+Note: Current browser support is available at http://en.wikipedia.org/wiki/WebSocket#Browser_support under the RFC-6455 row.
