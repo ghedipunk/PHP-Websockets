@@ -387,14 +387,14 @@ abstract class WebSocketServer {
       return false;
     }
     if (extension_loaded('mbstring')) {
-      if ($headers['length'] > mb_strlen($payload)) {
+      if ($headers['length'] > mb_strlen($this->applyMask($headers,$payload))) {
         $user->handlingPartialPacket = true;
         $user->partialBuffer = $message;
         return false;
       }
     } 
     else {
-      if ($headers['length'] > strlen($payload)) {
+      if ($headers['length'] > strlen($this->applyMask($headers,$payload))) {
         $user->handlingPartialPacket = true;
         $user->partialBuffer = $message;
         return false;
