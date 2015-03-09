@@ -12,7 +12,7 @@ To use:
 
 Do not place the files in your web server's document root -- they are not intended to be ran through a web browser or otherwise directly accessible to the world.  They are intended to be ran through PHP's Command Line Interface (CLI).
 
-The main class, `WebSocketServer`, is intended to be inherrited by your class, and the methods `connected`, `closed`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
+The main class, `WebSocketServer`, is intended to be inherited by your class, and the methods `connected`, `closed`, and `process` should be overridden.  In fact, they are abstract, so they _must_ be overridden.
 
 Future plans include allowing child processes forked from the controlling daemon to support broadcasts and to relay data from one socket in a child process to another socket in a separate child proccess.
 
