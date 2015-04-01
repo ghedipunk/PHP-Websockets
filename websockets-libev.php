@@ -8,15 +8,14 @@ abstract class WebSocketServer {
   protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should inherit from WebSocketUser.
   protected $maxBufferSize;        
   protected $master;
-  protected $sockets                              = array();
+  protected $watchers                             = array();
   protected $users                                = array();
   protected $interactive                          = true;
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
   protected $headerSecWebSocketExtensionsRequired = false;
 
-  protected $mem;
-
+ 
   function __construct($addr, $port, $bufferLength = 2048) {
     $this->maxBufferSize = $bufferLength;
     $this->master = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)  or die("Failed: socket_create()");
@@ -38,6 +37,12 @@ abstract class WebSocketServer {
     // Override to handle a connecting user, after the instance of the User is created, but before
     // the handshake has completed.
   }
+
+  protected function broadcast($msg) {
+	  foreach ($this->users as $user) 
+		 $this->send($user,$msg);
+  }
+  
   
   protected function send($user,$message) {
     //$this->stdout("> $message");
@@ -48,7 +53,6 @@ abstract class WebSocketServer {
   /**
    * Main processing loop
    */
-
 
    private function cb_read(&$user) {
 	   $socket=$user->socket;
@@ -100,59 +104,46 @@ abstract class WebSocketServer {
        }
      }
 
-  private function showmem(){
-	  $t=memory_get_usage()-$this->mem;
-      $this->stdout("mem total : ".memory_get_usage()." mem d : ".$t);
-  }
-
   public function run() {
-	 $this->mem = memory_get_usage();
-//	 $sockets=$this->sockets;
-//	 $users=$this->users;
 	 $w_listen = new EvIo($this->master, Ev::READ, function ($w)
-    /*use ()*/
-	{
-		$this->stdout("listen loop #".$this->master);
+     {
+		//$this->stdout("listen loop #".$this->master);
 		  $client = socket_accept($this->master);
 		  if ( $client === FALSE) {
 			  $this->stderr("Failed: socket_accept()");
 	          continue;
 		  }
 		  else if ( $client > 0) {
-			  socket_set_nonblock($client) ;
+			  socket_set_nonblock($client)               or print("Failed: socket_set_nonblock() id #".$client);
 			  $user = $this->connect($client);
+			  $this->stdout("Client connected. " . $client);
 		  	  $w_read = new EvIo($client, Ev::READ, function ($wr)
 				use ($client,&$user)
 				{
-					$this->stdout("read client:".$client." user id : ".$user->id."socket : ".$user->socket );
-
+					//$this->stdout("read client:".$client." user id : ".$user->id."socket : ".$user->socket );
 					$this->cb_read($user);
 				});
-				$user->watcher=&$w_read;
-				//used for memory leak detection
-				$this->showmem();
-			  $this->stdout("Client connected. #" . $client);
-				$w_read->start();
-				//Ev::run();
+			  $this->watchers[$user->id]=&$w_read;
+			  $w_read->start();
 		  }
 		  
 	});
 	Ev::run();
   }
-
-
+ 
   protected function connect($socket) {
     $user = new $this->userClass(uniqid('u'), $socket);
-  //  $this->users[$user->id] = $user;
-  // $this->sockets[$user->id] = $socket;
+    $this->users[$user->id] = $user;
     $this->connecting($user);
 	return $user;
   }
 
   protected function disconnect(&$user, $triggerClosed = true) {
-  if ($user !== null) {
-	  $user->watcher->stop();
-	  
+    
+	if ($user !== null) {
+	  $this->watchers[$user->id]->stop();
+	  $id=$user->id;
+      	  
       if ($triggerClosed) {
         $this->closed($user);
         socket_close($user->socket);
@@ -160,10 +151,12 @@ abstract class WebSocketServer {
       else {
         $message = $this->frame('', $user, 'close');
         @socket_write($user->socket, $message, strlen($message));
-      }
-	  //destroy watcher and user
-    $user->watcher=NULL;
+      } 
+      $this->watchers[$id]=NULL;
+	  $this->users[$id]=NULL;
 	  $user=NULL;
+	  $this->users = array_filter($this->users);
+	  $this->watchers = array_filter($this->watchers);
 	  
     }
   }
