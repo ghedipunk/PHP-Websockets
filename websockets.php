@@ -350,8 +350,8 @@ abstract class WebSocketServer {
 	  //add PartialPacket and calculate the new $lenght
 	  if ($user->handlingPartialPacket) {
 	    $packet = $user->partialBuffer . $packet;
-      $user->handlingPartialPacket = false;
-		  $length=strlen($packet);
+            $user->handlingPartialPacket = false;
+	    $lenght=strlen($packet);
 	  }
 	  $frame_pos=0;
 	  
