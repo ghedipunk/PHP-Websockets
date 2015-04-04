@@ -84,6 +84,11 @@ abstract class WebSocketServer {
               $this->doHandshake($user,$buffer);
             } 
             else {
+              //split packet into frame and send it to deframe
+              $this->split_packet($numBytes,$buffer, $user);
+              /*  Personnaly I do not need the loop the next call select will deal with partial packet as you allready 
+              save it inside $user and also prevent the app to blocking inside processing only one user 
+              
               if (($message = $this->deframe($buffer, $user)) !== FALSE) {
                 if($user->hasSentClose) {
                   $this->disconnect($user->socket);
@@ -109,7 +114,7 @@ abstract class WebSocketServer {
                     }
                   }
                 } while($numByte > 0);
-              }
+              }*/
             }
           }
         }
@@ -339,6 +344,58 @@ abstract class WebSocketServer {
 
     return chr($b1) . chr($b2) . $lengthField . $message;
   }
+  
+ //check packet if he have more than one frame and process each frame individually
+  protected function split_packet($lenght,$packet, $user) {
+	  //add PartialPacket and calculate the new $lenght
+	  if ($user->handlingPartialPacket) {
+	    $packet = $user->partialBuffer . $packet;
+      $user->handlingPartialPacket = false;
+		  $length=strlen($packet);
+	  }
+	  $frame_pos=0;
+	  
+	  $frame_id=1;
+	  //$this->stdout("########  PACKET SIZE OF ".$lenght." #########");
+	  while($frame_pos<$lenght) {
+		  $headers = $this->extractHeaders($packet);
+		  $headers_size = $this->calcoffset($headers);
+		  $framesize=$headers['length']+$headers_size;
+		  //$this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
+			
+		  //split frame from packet and process it
+		  $frame=substr($packet,$frame_pos,$framesize);
+		  if (($message = $this->deframe($frame, $user)) !== FALSE) {
+			  if($user->hasSentClose) {
+		  	  $this->disconnect($user->socket);
+			  } else {
+			    if (mb_check_encoding($message,'UTF-8')) { 
+				    //$this->stdout("Is UTF-8\n".$message); 
+					  $this->process($user, $message);
+				  } else {
+				    $this->stdout("not UTF-8\n");
+				  }
+			  }
+		  }	
+		  //get the new position
+		  $frame_pos+=$framesize;
+		  $frame_id++;
+	  }
+	  //$this->stdout("########    PACKET END         #########");
+  }
+
+   protected function calcoffset($headers) {
+		$offset = 2;
+		if ($headers['hasmask']) {
+			$offset += 4;
+		}
+		if ($headers['length'] > 65535) {
+			$offset += 8;
+		} elseif ($headers['length'] > 125) {
+			$offset += 2;
+		}
+		return $offset;
+	}
 
   protected function deframe($message, &$user) {
     //echo $this->strtohex($message);
@@ -364,12 +421,14 @@ abstract class WebSocketServer {
         break;
     }
 
+    /* Deal by split_packet() as now deframe() do only one frame at a time.
     if ($user->handlingPartialPacket) {
       $message = $user->partialBuffer . $message;
       $user->handlingPartialPacket = false;
       return $this->deframe($message, $user);
     }
-
+    */
+    
     if ($this->checkRSVBits($headers,$user)) {
       return false;
     }
