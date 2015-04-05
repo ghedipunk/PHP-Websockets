@@ -86,35 +86,6 @@ abstract class WebSocketServer {
             else {
               //split packet into frame and send it to deframe
               $this->split_packet($numBytes,$buffer, $user);
-              /*  Personnaly I do not need the loop the next call select will deal with partial packet as you allready 
-              save it inside $user and also prevent the app to blocking inside processing only one user 
-              
-              if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                if($user->hasSentClose) {
-                  $this->disconnect($user->socket);
-                  $this->stdout("Client disconnected. Sent close: " . $socket);
-                }
-                else {
-                  $this->process($user, $message); // todo: Re-check this.  Should already be UTF-8.
-                }
-              } 
-              else {
-                do {
-                  $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,MSG_PEEK);
-                  if ($numByte > 0) {
-                    $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,0);
-                    if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                      if($user->hasSentClose) {
-                        $this->disconnect($user->socket);
-                        $this->stdout("Client disconnected. Sent close: " . $socket);
-                      }
-                      else {
-                       $this->process($user,$message);
-                      }
-                    }
-                  }
-                } while($numByte > 0);
-              }*/
             }
           }
         }
@@ -356,17 +327,16 @@ abstract class WebSocketServer {
     $fullpacket=$packet;
     $frame_pos=0;
     $frame_id=1;
-    //$this->stdout("########  PACKET SIZE OF ".$lenght." #########");
+
     while($frame_pos<$lenght) {
       $headers = $this->extractHeaders($packet);
       $headers_size = $this->calcoffset($headers);
       $framesize=$headers['length']+$headers_size;
       $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
-      //$this->stdout($this->strtohex($packet));
 
       //split frame from packet and process it
       $frame=substr($fullpacket,$frame_pos,$framesize);
-      //$this->stdout($this->strtohex($frame));
+
       if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
 	  $this->disconnect($user);
