@@ -345,57 +345,60 @@ abstract class WebSocketServer {
     return chr($b1) . chr($b2) . $lengthField . $message;
   }
   
- //check packet if he have more than one frame and process each frame individually
+  //check packet if he have more than one frame and process each frame individually
   protected function split_packet($lenght,$packet, $user) {
-	  //add PartialPacket and calculate the new $lenght
-	  if ($user->handlingPartialPacket) {
-	    $packet = $user->partialBuffer . $packet;
-            $user->handlingPartialPacket = false;
-	    $lenght=strlen($packet);
+    //add PartialPacket and calculate the new $lenght
+    if ($user->handlingPartialPacket) {
+      $packet = $user->partialBuffer . $packet;
+      $user->handlingPartialPacket = false;
+      $lenght=strlen($packet);
+    }
+    $fullpacket=$packet;
+    $frame_pos=0;
+    $frame_id=1;
+    //$this->stdout("########  PACKET SIZE OF ".$lenght." #########");
+    while($frame_pos<$lenght) {
+      $headers = $this->extractHeaders($packet);
+      $headers_size = $this->calcoffset($headers);
+      $framesize=$headers['length']+$headers_size;
+      $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
+      //$this->stdout($this->strtohex($packet));
+
+      //split frame from packet and process it
+      $frame=substr($fullpacket,$frame_pos,$framesize);
+      //$this->stdout($this->strtohex($frame));
+      if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
+        if ($user->hasSentClose) {
+	  $this->disconnect($user);
+	} else {
+	  if (mb_check_encoding($message,'UTF-8')) { 
+	    //$this->stdout("Is UTF-8\n".$message); 
+	    $this->process($user, $message);
+	  } else {
+	    $this->stdout("not UTF-8\n");
 	  }
-	  $frame_pos=0;
-	  
-	  $frame_id=1;
-	  //$this->stdout("########  PACKET SIZE OF ".$lenght." #########");
-	  while($frame_pos<$lenght) {
-		  $headers = $this->extractHeaders($packet);
-		  $headers_size = $this->calcoffset($headers);
-		  $framesize=$headers['length']+$headers_size;
-		  //$this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
-			
-		  //split frame from packet and process it
-		  $frame=substr($packet,$frame_pos,$framesize);
-		  if (($message = $this->deframe($frame, $user)) !== FALSE) {
-			  if($user->hasSentClose) {
-		  	  $this->disconnect($user->socket);
-			  } else {
-			    if (mb_check_encoding($message,'UTF-8')) { 
-				    //$this->stdout("Is UTF-8\n".$message); 
-					  $this->process($user, $message);
-				  } else {
-				    $this->stdout("not UTF-8\n");
-				  }
-			  }
-		  }	
-		  //get the new position
-		  $frame_pos+=$framesize;
-		  $frame_id++;
-	  }
-	  //$this->stdout("########    PACKET END         #########");
+        }
+      }	
+      //get the new position also modify packet data
+      $frame_pos+=$framesize;
+      $packet=substr($fullpacket,$frame_pos);
+      $frame_id++;
+    }
+    $this->stdout("########    PACKET END         #########");
   }
 
-   protected function calcoffset($headers) {
-		$offset = 2;
-		if ($headers['hasmask']) {
-			$offset += 4;
-		}
-		if ($headers['length'] > 65535) {
-			$offset += 8;
-		} elseif ($headers['length'] > 125) {
-			$offset += 2;
-		}
-		return $offset;
-	}
+  protected function calcoffset($headers) {
+    $offset = 2;
+    if ($headers['hasmask']) {
+      $offset += 4;
+    }
+    if ($headers['length'] > 65535) {
+      $offset += 8;
+    } elseif ($headers['length'] > 125) {
+      $offset += 2;
+    }
+    return $offset;
+  }
 
   protected function deframe($message, &$user) {
     //echo $this->strtohex($message);
