@@ -86,35 +86,6 @@ abstract class WebSocketServer {
             else {
               //split packet into frame and send it to deframe
               $this->split_packet($numBytes,$buffer, $user);
-              /*  Personnaly I do not need the loop the next call select will deal with partial packet as you allready 
-              save it inside $user and also prevent the app to blocking inside processing only one user 
-              
-              if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                if($user->hasSentClose) {
-                  $this->disconnect($user->socket);
-                  $this->stdout("Client disconnected. Sent close: " . $socket);
-                }
-                else {
-                  $this->process($user, $message); // todo: Re-check this.  Should already be UTF-8.
-                }
-              } 
-              else {
-                do {
-                  $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,MSG_PEEK);
-                  if ($numByte > 0) {
-                    $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,0);
-                    if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                      if($user->hasSentClose) {
-                        $this->disconnect($user->socket);
-                        $this->stdout("Client disconnected. Sent close: " . $socket);
-                      }
-                      else {
-                       $this->process($user,$message);
-                      }
-                    }
-                  }
-                } while($numByte > 0);
-              }*/
             }
           }
         }
@@ -346,47 +317,52 @@ abstract class WebSocketServer {
   }
   
   //check packet if he have more than one frame and process each frame individually
+  //stdout() inside is use for debugging can be remove safely.
   protected function split_packet($length,$packet, $user) {
     //add PartialPacket and calculate the new $length
-    if ($user->handlingPartialPacket) {
-      $packet = $user->partialBuffer . $packet;
-      $user->handlingPartialPacket = false;
-      $length=strlen($packet);
-    }
-    $fullpacket=$packet;
-    $frame_pos=0;
-    $frame_id=1;
-    //$this->stdout("########  PACKET SIZE OF ".$length." #########");
-    while($frame_pos<$length) {
-      $headers = $this->extractHeaders($packet);
-      $headers_size = $this->calcoffset($headers);
-      $framesize=$headers['length']+$headers_size;
-      $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
-      //$this->stdout($this->strtohex($packet));
+	if ($user->handlingPartialPacket) {
+	  $packet = $user->partialBuffer . $packet;
+          $user->handlingPartialPacket = false;
+	  $length=strlen($packet);
+	}
+	$fullpacket=$packet;
+	$frame_pos=0;
+	$frame_id=1;
+	//$this->stdout("########    PACKET SIZE ".$length."         #########");
+	while($frame_pos<$length) {
+	  $headers = $this->extractHeaders($packet);
+	  
+	  //collect info for frame (headers_size,payload,size)
+	  $frame=$this->extractFrame($packet,$headers);
+	  // $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$frame['headers_size']." = framesize of ".$frame['size']);
 
-      //split frame from packet and process it
-      $frame=substr($fullpacket,$frame_pos,$framesize);
-      //$this->stdout($this->strtohex($frame));
-      if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
-        if ($user->hasSentClose) {
-	  $this->disconnect($user);
-	} else {
-	  if (mb_check_encoding($message,'UTF-8')) { 
-	    //$this->stdout("Is UTF-8\n".$message); 
-	    $this->process($user, $message);
-	  } else {
-	    $this->stdout("not UTF-8\n");
-	  }
-        }
-      }	
-      //get the new position also modify packet data
-      $frame_pos+=$framesize;
-      $packet=substr($fullpacket,$frame_pos);
-      $frame_id++;
-    }
-    $this->stdout("########    PACKET END         #########");
+	  //check if we deal with partialpacket
+	  if ($frame['size'] > $length-$frame_pos) {
+	    $user->handlingPartialPacket = true;
+            $user->partialBuffer = $packet;
+          }
+	  else if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
+	    if ($user->hasSentClose) {
+	      $this->disconnect($user);
+	    } else {
+	      if (mb_check_encoding($message,'UTF-8')) { 
+	            //$this->stdout("Is UTF-8\n".$message); 
+		    $this->process($user, $message);
+		  } else {
+		    $this->stdout("not UTF-8\n");
+		  }
+		}
+	  }	
+	  //get the new position also modify packet data
+	  $frame_pos+=$frame['size'];
+	  $packet=substr($fullpacket,$frame_pos);
+	  $frame_id++;
+	}
+	//$this->stdout("########    PACKET END         #########");
   }
 
+
+/* TO REMOVE :  extractFrame() it's a merge of extractPayload() + calcoffset() added by myself no more duplicate code
   protected function calcoffset($headers) {
     $offset = 2;
     if ($headers['hasmask']) {
@@ -399,10 +375,11 @@ abstract class WebSocketServer {
     }
     return $offset;
   }
-
-  protected function deframe($message, &$user) {
-    //echo $this->strtohex($message);
-    $headers = $this->extractHeaders($message);
+*/
+  
+  //add $headers to function because allready know inside split_packet()
+  protected function deframe($frame, &$user,$headers) {
+    // echo $this->strtohex($message);
     $pongReply = false;
     $willClose = false;
     switch($headers['opcode']) {
@@ -412,7 +389,7 @@ abstract class WebSocketServer {
         break;
       case 8:
         // todo: close the connection
-        $user->hasSentClose = true;
+	    $user->hasSentClose = true;
         return "";
       case 9:
         $pongReply = true;
@@ -424,14 +401,6 @@ abstract class WebSocketServer {
         break;
     }
 
-    /* Deal by split_packet() as now deframe() do only one frame at a time.
-    if ($user->handlingPartialPacket) {
-      $message = $user->partialBuffer . $message;
-      $user->handlingPartialPacket = false;
-      return $this->deframe($message, $user);
-    }
-    */
-    
     if ($this->checkRSVBits($headers,$user)) {
       return false;
     }
@@ -441,13 +410,16 @@ abstract class WebSocketServer {
       return false;
     }
 
-    $payload = $user->partialMessage . $this->extractPayload($message,$headers);
+    $payload = $user->partialMessage . $frame['payload'];
+	
 
     if ($pongReply) {
       $reply = $this->frame($payload,$user,'pong');
       socket_write($user->socket,$reply,strlen($reply));
       return false;
     }
+
+    /* TO REMOVE : now deframe() process frame and not packet it's logic that split_packet() check that 	
     if (extension_loaded('mbstring')) {
       if ($headers['length'] > mb_strlen($this->applyMask($headers,$payload))) {
         $user->handlingPartialPacket = true;
@@ -462,6 +434,7 @@ abstract class WebSocketServer {
         return false;
       }
     }
+    */
 
     $payload = $this->applyMask($headers,$payload);
 
@@ -472,7 +445,7 @@ abstract class WebSocketServer {
     $user->partialMessage = $payload;
     return false;
   }
-
+  
   protected function extractHeaders($message) {
     $header = array('fin'     => $message[0] & chr(128),
             'rsv1'    => $message[0] & chr(64),
@@ -512,6 +485,7 @@ abstract class WebSocketServer {
     return $header;
   }
 
+  /* TO REMOVE :  extractFrame() it's a merge of extractPayload() + calcoffset() added by myself no more duplicate code
   protected function extractPayload($message,$headers) {
     $offset = 2;
     if ($headers['hasmask']) {
@@ -524,6 +498,23 @@ abstract class WebSocketServer {
       $offset += 2;
     }
     return substr($message,$offset);
+  }*/
+
+  protected function extractFrame($packet,$headers) {
+    $offset = 2;
+    if ($headers['hasmask']) {
+      $offset += 4;
+    }
+    if ($headers['length'] > 65535) {
+      $offset += 8;
+    } 
+    elseif ($headers['length'] > 125) {
+      $offset += 2;
+    }
+	$frame['headers_size']=$offset;
+	$frame['payload']=substr($packet,$offset,$headers['length']);
+	$frame['size']=$offset+$headers['length'];
+    return $frame;
   }
 
   protected function applyMask($headers,$payload) {
