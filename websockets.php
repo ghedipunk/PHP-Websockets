@@ -77,11 +77,22 @@ abstract class WebSocketServer {
           else {
             $user = $this->getUserBySocket($socket);
             if (!$user->handshake) {
-              $tmp = str_replace("\r", '', $buffer);
-              if (strpos($tmp, "\n\n") === false ) {
-                continue; // If the client has not finished sending the header, then wait before sending our upgrade response.
+	      if ($user->handlingPartialPacket) {
+		$buffer=$user->partialBuffer . $buffer;
+	        $user->handlingPartialPacket=FALSE;
               }
-              $this->doHandshake($user,$buffer);
+              $tmp = str_replace("\r", '', $buffer);
+	      if (strpos($tmp, "\n\n") !== false ) {
+		// If the client has finished sending the header, otherwise wait another call before sending our upgrade response.
+		$this->doHandshake($user,$buffer); 
+		//clear buffer
+     	        $user->partialBuffer='';
+              } 
+              else {
+		//store partial packet to be analysed in next call
+		$user->partialBuffer=$buffer;
+                $user->handlingPartialPacket=TRUE;
+	      }
             } 
             else {
               //split packet into frame and send it to deframe
