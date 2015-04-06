@@ -160,7 +160,7 @@ abstract class WebSocketServer {
     $user = new $this->userClass(uniqid('u'), $socket);
     $this->users[$user->id] = $user;
 	//Use sockets for default method
-	if (!$this->$evLoaded)
+	if (!$this->evLoaded)
 		$this->sockets[$user->id] = $socket;
     $this->connecting($user);
 	return $user;
@@ -170,7 +170,7 @@ abstract class WebSocketServer {
     
 	if ($user !== null) {
 	  //remove data used by internal method
-	  if ($this->$evLoaded) {
+	  if ($this->evLoaded) {
 	    $this->watchers[$user->id]->stop();
 		$this->watchers[$id]=NULL;
 		$this->watchers = array_filter($this->watchers);
