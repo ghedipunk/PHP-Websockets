@@ -16,15 +16,11 @@ $autoloader->addRule(new \Phpws\Autoloader\WSAutoloadRule());
 // If you hate the word 'singleton' then go read the rant I've placed above the config's getSingleton method.
 $config = \Phpws\GlobalConfig::getSingleton();
 
-if (($factoryClass = $config->getValue('factory overrides', 'FactoryClass')) !== null)
+if (($factoryClass = $config->getValue('factory overrides', 'FactoryClass')) === null)
 {
-  $factory = new $factoryClass($config);
-}
-else
-{
-  $factory = new \Phpws\Factory($config);
+  $factoryClass = '\Phpws\Factory';
 }
 
-$evloop = $factory->create('EventLoop');
+$evloop = $factoryClass::create('EventLoop');
 
 $evloop->run();
