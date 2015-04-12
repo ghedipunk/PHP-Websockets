@@ -5,6 +5,6 @@ class Router implements \Phpws\Interfaces\Router
 {
   public function route($path)
   {
-
+    die('Successfully routing');
   }
 }

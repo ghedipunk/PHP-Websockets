@@ -8,20 +8,16 @@ class WSAutoloadRule implements \Phpws\Interfaces\AutoloadRule
 {
   public function load($origClassName)
   {
+    static $pwd = null;
     $className = strtolower($origClassName);
     $ds = DIRECTORY_SEPARATOR;
 
-    // Check if the global config is initialized yet without triggering autoloading
-    if (class_exists('\\Phpws\\Config', false))
-    {
-      $config = \Phpws\Config::getSingleton();
-      $pwd = $config->getSetting('present_working_directory');
-    }
-    else
+    // Check if the factory is initialized yet without triggering autoloading
+    if ($pwd === null)
     {
       $pwd = getcwd();
     }
-
+    
     if (strpos($className, 'phpws\\') === 0)
     {
       $pathParts = explode('\\', $className);
