@@ -7,8 +7,9 @@ $bench->run(64123);
 
 
 class bench  {
-	//here change the nb of time you want to benchmark method
+	//loopnb = simulate number of frame processing
 	protected $loopnb = 10000;
+	//NO need to change anything beyong this line
 	protected $mask      = 'aaaa';
 
 	function run($samplesize) {
