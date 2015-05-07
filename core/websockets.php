@@ -6,15 +6,15 @@ require_once('./core/users.php');
 abstract class core_websockets {
 
   //Security configuration Start 
-  protected $debug_mode							    = true; // debug tool I left in code. verbose mode
-  protected $max_request_handshake_size = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
+  protected $debug_mode				= false; // debug tool I left in code. verbose mode
+  protected $max_request_handshake_size 	= 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
   // There is no way to use http status code to send some application error to client we MUST open the connection first
-  protected $max_client                 = 2;  // 1024 is the max with select() keep space for rejecting socket 
+  protected $max_client                 	= 100;  // 1024 is the max with select() keep space for rejecting socket 
   protected $error_maxclient   = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
 
   // TODO : these 2 variables will be used to protect OOM and dynamically set max_client based on mem allowed per user
-  protected $max_writeBuffer					  = 49152; //48K out 
-  protected $max_readBuffer					    = 49152; //48K in 
+  protected $max_writeBuffer			= 49152; //48K out 
+  protected $max_readBuffer			= 49152; //48K in 
   //Security configuration End
   
   protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should inherit from WebSocketUser.
