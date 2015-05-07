@@ -56,11 +56,11 @@ abstract class core_websockets {
 
   //here an example how to use a single ws app to handle multiple virtualhost / 
   protected function broadcast($msg,&$sender) {
-    $channel=$sender->headers['host'].$sender->headers['get'];
+    $vhost=$sender->headers['host'].$sender->headers['get'];
     $message = $this->frame($msg);
 	  foreach ($this->users as $user) {
       if ($user->handshaked) { // prevent sending data to user who have not complete the handshake session.
-        if ($channel ==($user->headers['host'].$user->headers['get'])) {
+        if ($vhost ==($user->headers['host'].$user->headers['get'])) {
             $this->stdout("same channel ".$channel,true);
             $this->ws_write($user, $message);
         }
@@ -321,16 +321,6 @@ abstract class core_websockets {
   protected function checkProtocol($protocols) {
     // Note : If the client specified subprotocol you MUST choose ONLY ONE  of the list otherwise 
     // the client will close the connection.  It's FIFO order sent by client.
-    foreach($protocols as $subprotocol ) {
-      switch ($subprotocol) {
-        //the list of protocol the server will support
-        case "json":
-        case "soap";
-        case "echobot";
-        case "broadcasting";
-          return $subprotocol;
-      }
-    }
     return false;
   }
 
