@@ -24,7 +24,7 @@ function init() {
 		// If you use protocol the server MUST choose ONLY ONE protocol.
 		// ws.protocol store the protocol the server choose
 		// use it in both direction ( receiving and sending ) 
-		var proto=['invalidprotocol','broadcasting','echobot','json','soap'];
+		var proto=['invalidprotocol','broadcasting','echobot','json','msgpack'];
 		ws = new WebSocket(host,proto); // (host,protocol) protocol placed in order of priority
 		log('WebSocket - status '+ws.readyState);
 		ws.onopen    = function(msg) {
