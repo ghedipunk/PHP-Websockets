@@ -14,6 +14,21 @@ class echoServer extends core_websockets {
   // toolbox_[yourcode] 
   use eventloop_socket; 
   
+  // Configuration Start ( default value uncomment if you need different value ) 
+  //protected $debug_mode							              = false; // debug tool I left in code. verbose mode
+  //protected $max_request_handshake_size           = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
+  // There is no way to use http status code to send some application error to client we MUST open the connection first
+  //protected $max_client                           = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
+  //protected $error_maxclient   = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
+  //protected $headerOriginRequired                 = false;
+  //protected $headerProtocolRequired               = false;
+  //protected $willSupportExtensions                = false;  // Turn it to true if you support any extensions
+
+  // TODO : these 2 variables will be used to protect OOM and dynamically set max_client based on mem allowed per user
+  //protected $max_writeBuffer					            = 49152; //48K out 
+  //protected $max_readBuffer					              = 49152; //48K in 
+  // Configuration End
+
   //protected $maxBufferSize = 1048576; //1MB... overkill for an echo server, but potentially plausible for other applications.
   
   protected function onmessage (&$user, $message) {
