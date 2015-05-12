@@ -1,7 +1,8 @@
 #!/usr/bin/env php
 <?php
 //Same purpose of '@' doing it once
-error_reporting(E_ERROR);  // only show error that will break the server.
+// Dev environement you should use E_ALL ( unless you like having headache when debugging)
+error_reporting(E_ERROR);  // only show error that will break the server. should be enought for Production
 
 //a simple autoload 
 // Structure of $class = directory_filename
