@@ -1,7 +1,7 @@
 <?php
 namespace Phpws\Interfaces
 
-interface ClientApplication
+interface MessageHandler
 {
   public function process($user, $message);
   public function connected($user);
