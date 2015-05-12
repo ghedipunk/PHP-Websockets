@@ -5,17 +5,20 @@ require_once('./core/users.php');
 
 abstract class core_websockets {
 
-  //Security configuration Start 
-  protected $debug_mode				= false; // debug tool I left in code. verbose mode
-  protected $max_request_handshake_size 	= 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
+  // Configuration Start 
+  protected $debug_mode				  = false; // debug tool I left in code. verbose mode
+  protected $max_request_handshake_size 	  = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
   // There is no way to use http status code to send some application error to client we MUST open the connection first
-  protected $max_client                 	= 100;  // 1024 is the max with select() keep space for rejecting socket 
-  protected $error_maxclient   = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
+  protected $max_client                 	  = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
+  protected $error_maxclien	 		  = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
+  protected $headerOriginRequired                 = false;
+  protected $headerProtocolRequired               = false;
+  protected $willSupportExtensions                = false;  // Turn it to true if you support any extensions
 
   // TODO : these 2 variables will be used to protect OOM and dynamically set max_client based on mem allowed per user
-  protected $max_writeBuffer			= 49152; //48K out 
-  protected $max_readBuffer			= 49152; //48K in 
-  //Security configuration End
+  protected $max_writeBuffer			  = 49152; //48K out 
+  protected $max_readBuffer			  = 49152; //48K in 
+  // Configuration End
   
   protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should inherit from WebSocketUser.
   protected $maxBufferSize;        
@@ -24,9 +27,6 @@ abstract class core_websockets {
   protected $writeWatchers                        = null;
   protected $users                                = array();
   protected $interactive                          = true;
-  protected $headerOriginRequired                 = false;
-  protected $headerProtocolRequired               = false;
-  protected $willSupportExtensions                = false;  // Turn it to true if you support any extensions
   protected $nbclient                             = 0;
 
 
@@ -44,7 +44,7 @@ abstract class core_websockets {
   }
 
   abstract protected function onmessage(&$user,$message); // Called immediately when the data is recieved. 
-  abstract protected function onopen($user);        // Called after the handshake response is sent to the client.
+  abstract protected function onopen(&$user);        // Called after the handshake response is sent to the client.
   abstract protected function onclose($user);           // Called after the connection is closed.
   abstract public    function run();                   // event loop within trait in eventloop.php support now (socket,libev)
   abstract protected function addWritewatchers(&$user,$open);
@@ -58,31 +58,31 @@ abstract class core_websockets {
   protected function broadcast($msg,&$sender) {
     $vhost=$sender->headers['host'].$sender->headers['get'];
     $message = $this->frame($msg);
-	  foreach ($this->users as $user) {
+    foreach ($this->users as $user) {
       if ($user->handshaked) { // prevent sending data to user who have not complete the handshake session.
         if ($vhost ==($user->headers['host'].$user->headers['get'])) {
-            $this->stdout("same channel ".$channel,true);
-            $this->ws_write($user, $message);
+          $this->stdout("same channel ".$channel,true);
+          $this->ws_write($user, $message);
         }
       }
     }
   }
    
-  protected function send($user,$message) {
+  protected function send(&$user,$message) {
     //$this->stdout("> $message");
     $message = $this->frame($message);
     $this->ws_write($user, $message);
   }
 
   /**
-   * Main processing loop
+   * Read callback on socket
    */
 
   protected function cb_read(&$user) {
     $socket=$user->socket;
-	  $numBytes = socket_recv($socket,$buffer,$this->maxBufferSize,0); 
+    $numBytes = socket_recv($socket,$buffer,$this->maxBufferSize,0); 
     if ($numBytes === false) {
-	    $this->stdout('Socket error: ' . socket_strerror(socket_last_error($socket)));
+      $this->stdout('Socket error: ' . socket_strerror(socket_last_error($socket)));
     }
     elseif ($numBytes == 0) {
       $this->disconnect($user);
@@ -90,18 +90,18 @@ abstract class core_websockets {
     } 
     else {
       if (!$user->handshaked) {
-		    if ($user->handlingPartialPacket) {
-		      $buffer=$user->readBuffer . $buffer;
+        if ($user->handlingPartialPacket) {
+          $buffer=$user->readBuffer . $buffer;
         }
-		    //OOM protection:  prevent buffer overflow from malicious client.
-		    if ( strlen($buffer)  > $this->max_request_handshake_size ) {
-		      $handshakeResponse = "HTTP/1.1 413 Request Entity Too Large"; 
+        //OOM protection:  prevent buffer overflow from malicious client.
+        if ( strlen($buffer)  > $this->max_request_handshake_size ) {
+	  $handshakeResponse = "HTTP/1.1 413 Request Entity Too Large"; 
           $this->ws_write($user,$handshakeResponse);
           $this->disconnect($user);
         }
-		    else {
-			    // If the client has finished sending the header, otherwise wait before sending our upgrade response.
-			    if (strpos($buffer, "\r\n\r\n") !== FALSE ) {
+	else {
+	  // If the client has finished sending the header, otherwise wait before sending our upgrade response.
+	  if (strpos($buffer, "\r\n\r\n") !== FALSE ) {
             $this->doHandshake($user,$buffer);
             // after handshake successfull check for maximum client reach and send msg + close the connection
             if ($this->nbclient>$this->max_client) {
@@ -123,8 +123,8 @@ abstract class core_websockets {
         }
       } 
       else {
-	      $this->split_packet($numBytes,$buffer, $user);
-	    }
+	$this->split_packet($numBytes,$buffer, $user);
+      }
     }
   }
 
@@ -137,34 +137,34 @@ abstract class core_websockets {
 
   // buffering outgoing data if requiered and wrapping socket_write() for future implementation of libevent library
   protected function ws_write(&$user,$message='') {
-	  //wrapper function to process internal write handler
-	  $user->writeBuffer.=$message;
-	  $sizeBuffer = strlen($user->writeBuffer);
+    //wrapper function to process internal write handler
+    $user->writeBuffer.=$message;
+    $sizeBuffer = strlen($user->writeBuffer);
     $sent = socket_write($user->socket, $user->writeBuffer, $sizeBuffer);
-	  if ($sent<$sizeBuffer) {
-		  //adjust the buffer
-		  $user->writeBuffer=substr($user->writeBuffer,$sent);
-		  //set watcher to write mode
-		  if (!$user->writeNeeded) {
-			  $this->stdout(">>> Start write watchers");
-			  $user->writeNeeded=true;
+    if ($sent<$sizeBuffer) {
+      //adjust the buffer
+      $user->writeBuffer=substr($user->writeBuffer,$sent);
+      //set watcher to write mode
+      if (!$user->writeNeeded) {
+        $this->stdout(">>> Start write watchers",true);
+	$user->writeNeeded=true;
         $this->addWriteWatchers($user,true);
-		  }
-		  $this->stdout(">>size msg $sizeBuffer envoyer $sent");
-	  }
-	  else {
+      }
+      $this->stdout(">>size msg $sizeBuffer sent $sent",true);
+    }
+    else {
       //clear buffer and remove write flag and watcher
       $user->writeBuffer='';
       if ($user->writeNeeded){
-        $this->stdout("<<< Stop write watchers");
+        $this->stdout("<<< Stop write watchers",true);
         $user->writeNeeded=false;
         $this->addWriteWatchers($user,false);
       }
-	  }
+    }
   }
 
   protected function showmem(){
-	  $t=memory_get_usage()-$this->mem;
+    $t=memory_get_usage()-$this->mem;
     $this->stdout("mem total : ".memory_get_usage()." diff : ".$t,true);
   }
 
@@ -173,13 +173,13 @@ abstract class core_websockets {
     $user = new $this->userClass(uniqid('u'), $socket);
     $this->users[$user->id] = &$user;
     $this->connecting($user);
-	  return $user;
+    return $user;
   }
 
   protected function disconnect(&$user, $triggerClosed = true) {  
-	  if ($user !== null) {
+    if ($user !== null) {
       $this->nbclient--;
-      $this->stdout("Removing data from ".$user->id,true);
+      $this->stdout("Client disconnected. ".$user->socket);
       //remove data used by internal method
       //$this->readWatchers[$user->id]->stop();
       //free memory before sending variable to be garbage collected
@@ -327,30 +327,24 @@ abstract class core_websockets {
   public function stdout($message,$debug=false) {
     if ($this->interactive) {
       if (($this->debug_mode && $debug) || !$debug) {
-          echo "$message\n";
+        echo "$message\n";
       }
     }
   }
 
   protected function frame($message, $messageType='text', $messageContinues=false) {
     switch ($messageType) {
-      case 'continuous':
-        $bytes[1] = 0;
+      case 'continuous': $bytes[1] = 0;
         break;
-      case 'text':
-        $bytes[1] = ($messageContinues) ? 0 : 1;
+      case 'text': $bytes[1] = ($messageContinues) ? 0 : 1;
         break;
-      case 'binary':
-        $bytes[1] = ($messageContinues) ? 0 : 2;
+      case 'binary': $bytes[1] = ($messageContinues) ? 0 : 2;
         break;
-      case 'close':
-        $bytes[1] = 8;
+      case 'close': $bytes[1] = 8;
         break;
-      case 'ping':
-        $bytes[1] = 9;
+      case 'ping': $bytes[1] = 9;
         break;
-      case 'pong':
-        $bytes[1] = 10;
+      case 'pong': $bytes[1] = 10;
         break;
     }
     if (!$messageContinues) {
@@ -359,7 +353,7 @@ abstract class core_websockets {
 
     $length = strlen($message);
     if ($length < 126) {
-  	  $bytes[2] = $length;
+      $bytes[2] = $length;
     } 
     elseif ($length <= 65536) {
       $bytes[2] = 126;
@@ -377,12 +371,12 @@ abstract class core_websockets {
       $bytes[9] = ( $length >>  8 ) & 255;
       $bytes[10]= ( $length       ) & 255;
     }
-	$headers = "";
-	foreach ($bytes as $chr) {
-		$headers .= chr($chr);
-	}
-	return $headers . $message;
- }
+    $headers = "";
+    foreach ($bytes as $chr) {
+      $headers .= chr($chr);
+    }
+    return $headers . $message;
+  }
 
 
   //check packet if he have more than one frame and process each frame individually
@@ -411,13 +405,13 @@ abstract class core_websockets {
       }
       else if (($message = $this->deframe($packet, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
-            $this->disconnect($user);
+          $this->disconnect($user);
         } else {
-          if (mb_check_encoding($message,'UTF-8')) { 
+          if (preg_match('//u', $message)) {
             //$this->stdout("Is UTF-8\n".$message); 
             $this->onmessage($user, $message);
           } else {
-            $this->stdout("not UTF-8\n");
+            $this->stdout("not UTF-8\n",true);
           }
         }
       }	
@@ -426,12 +420,12 @@ abstract class core_websockets {
       $packet=substr($fullpacket,$frame_pos);
       $frame_id++;
     }
-	  $this->stdout("########    PACKET END         #########",true);
+    $this->stdout("########    PACKET END         #########",true);
   }
 
   protected function deframe($packet, &$user,$headers) {
     // echo $this->strtohex($message);
-	  // get payload as now we are sure are completely sent
+    // get payload as now we are sure are completely sent
     $payload=substr($packet,$headers['offset'],$headers['length']);
 
     $pongReply = false;
@@ -443,14 +437,14 @@ abstract class core_websockets {
         break;
       case 8:
         // todo: close the connection
-	    $user->hasSentClose = true;
+	$user->hasSentClose = true;
         return "";
       case 9:
         $pongReply = true;
       case 10:
-		    //A Pong frame MAY be sent unsolicited. This serves as a unidirectional
+	//A Pong frame MAY be sent unsolicited. This serves as a unidirectional
         //heartbeat. A response to an unsolicited Pong frame is not expected.
-	      //IE 11 default behavior send PONG ~30sec between them. Just ignore them.
+	//IE 11 default behavior send PONG ~30sec between them. Just ignore them.
         return false;  
       default:
         //$this->disconnect($user); // todo: fail connection
@@ -467,7 +461,7 @@ abstract class core_websockets {
       return false;
     }
  
-	  if ($pongReply) {
+    if ($pongReply) {
       $reply = $this->frame($payload,$user,'pong');
       $this->ws_write($user,$reply);
       return false;
@@ -487,41 +481,41 @@ abstract class core_websockets {
   protected function extractHeaders($message) {
     //fix bug where fin rsv1 rsv2 and rsv3 was string instead of int type
     $header = array(
-		        'fin'       => ord($message[0])>>7 & 1,
-            'rsv1'      => ord($message[0])>>6 & 1,
-            'rsv2'      => ord($message[0])>>5 & 1,
-            'rsv3'      => ord($message[0])>>4 & 1,
-            'opcode'    => ord($message[0] & chr(15)),
-            'hasmask'   => ord($message[1])>>7 & 1,
-            'length'    => 0,
-		        'indexMask' => 2,
-		        'offset'    => 0,
-            'mask'      => "");
+      'fin'       => ord($message[0])>>7 & 1,
+      'rsv1'      => ord($message[0])>>6 & 1,
+      'rsv2'      => ord($message[0])>>5 & 1,
+      'rsv3'      => ord($message[0])>>4 & 1,
+      'opcode'    => ord($message[0] & chr(15)),
+      'hasmask'   => ord($message[1])>>7 & 1,
+      'length'    => 0,
+      'indexMask' => 2,
+      'offset'    => 0,
+      'mask'      => "");
 
     $header['length'] = ord($message[1] & chr(127)) ;
 	
-	  if ($header['length'] == 126) {
+    if ($header['length'] == 126) {
       $header['indexMask'] = 4;
-	    $header['length'] =  (ord($message[2])<<8) | (ord($message[3])) ;
+      $header['length'] =  (ord($message[2])<<8) | (ord($message[3])) ;
     } 
     elseif ($header['length'] == 127) {
       $header['indexMask'] = 10;
       $header['length'] = (ord($message[2]) << 56 ) | ( ord($message[3]) << 48 ) | ( ord($message[4]) << 40 ) |                                                       (ord($message[5]) << 32 ) | ( ord($message[6]) << 24 ) | ( ord($message[7]) << 16 ) |
-		                      (ord($message[8]) << 8  ) | ( ord($message[9])) ;
+		          (ord($message[8]) << 8  ) | ( ord($message[9])) ;
     } 
-	  $header['offset']=$header['indexMask'];
+    $header['offset']=$header['indexMask'];
     if ($header['hasmask']) {
       $header['mask'] = $message[$header['indexMask']] . $message[$header['indexMask']+1] . 
-		                    $message[$header['indexMask']+2] . $message[$header['indexMask']+3];
-	    $header['offset']+=4;
+		        $message[$header['indexMask']+2] . $message[$header['indexMask']+3];
+      $header['offset']+=4;
     }
-	  //echo $this->strtohex($message);
+    //echo $this->strtohex($message);
     //$this->printHeaders($header);
     return $header;
   }
 
   protected function applyMask($headers,$payload) {
-	  $effectiveMask = "";
+    $effectiveMask = "";
     if ($headers['hasmask']) {
       $mask = $headers['mask'];
     } 
