@@ -364,16 +364,20 @@ abstract class WebSocketServer {
 
       if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
-	  $this->disconnect($user);
-	} else {
-	  if (mb_check_encoding($message,'UTF-8')) { 
-	    //$this->stdout("Is UTF-8\n".$message); 
-	    $this->process($user, $message);
-	  } else {
-	    $this->stdout("not UTF-8\n");
-	  }
+          $this->disconnect($user);
+        } else {
+          if (function_exists('mb_check_encoding')) {
+            if (mb_check_encoding($message,'UTF-8')) { 
+              $this->process($user, $message);
+            } else {
+              $this->stderr("not UTF-8\n");
+            }
+          }
+          else {
+            $this->process($user, $message);
+          }
         }
-      }	
+      } 
       //get the new position also modify packet data
       $frame_pos+=$framesize;
       $packet=substr($fullpacket,$frame_pos);
