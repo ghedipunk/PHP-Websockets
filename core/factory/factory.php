@@ -10,8 +10,7 @@ class Factory implements \Phpws\Interfaces\Factory
   {
     $this->config = $config;
   }
-
-  public static function create($objectName)
+  public function create($objectName)
   {
     $config = \Phpws\GlobalConfig::getSingleton();
 

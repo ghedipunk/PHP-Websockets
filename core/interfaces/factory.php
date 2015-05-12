@@ -3,5 +3,5 @@ namespace Phpws\Interfaces;
 
 interface Factory
 {
-  public static function create($objectName);
+  public function create($objectName);
 }

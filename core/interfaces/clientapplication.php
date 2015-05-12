@@ -1,7 +1,8 @@
 <?php
 namespace Phpws\Interfaces
 
-interface RouteEndpoint
+interface ClientApplication
+{
   public function process($user, $message);
   public function connected($user);
   public function closed($user);
