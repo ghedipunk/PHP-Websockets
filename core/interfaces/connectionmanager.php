@@ -4,8 +4,6 @@ namespace Phpws\Interfaces;
 interface ConnectionManager
 {
   public function addConnection (\Phpws\Interfaces\Connection $connection);
-  public function getConnection($connectionId);
-  public function getConnections();
+  public function findConnection($connecionId);
   public function removeConnection($connectionId);
-  public function newConnection($handle);
 }
