@@ -3,7 +3,7 @@
 //need Ev library http://php.net/manual/fr/book.ev.php
 trait eventloop_libev {
   final public function run() {
-	  $this->mem = memory_get_usage();
+    $this->mem = memory_get_usage();
     switch(Ev::backend()) {
       case Ev::BACKEND_SELECT : $backend="Select()";
         break;
@@ -16,20 +16,20 @@ trait eventloop_libev {
       case Ev::BACKEND_PORT   : $backend="Event Port"; // use by Solaris systems
         break;     
     }
-	  $this->stdout("RUNNING with libev method BACKEND : $backend");
-	  $w_listen = new EvIo($this->master, Ev::READ, function ($w) {
+    $this->stdout("RUNNING with libev method BACKEND : $backend");
+    $w_listen = new EvIo($this->master, Ev::READ, function ($w) {
       $client = socket_accept($this->master);
       if ( $client === FALSE) {
         $this->stdout("Failed: socket_accept()");
         continue;
       }
       else if ( $client > 0) {
-        socket_set_nonblock($client)               or print("Failed: socket_set_nonblock() id #".$client);
+        socket_set_nonblock($client)               or $this->stdout("Failed: socket_set_nonblock() id #".$client);
         $user = $this->connect($client);
         $this->stdout("Client #$this->nbclient connected. " . $client);
         $w_read = new EvIo($client, Ev::READ , function ($wr) use ($client,&$user) {
           $start=$this->getrps();
-            $this->stdout("read callback");
+            $this->stdout("read callback",true);
             $this->cb_read($user);
           $this->getrps($start,'<< read');
         });
@@ -45,7 +45,7 @@ trait eventloop_libev {
       $w_write = new EvIo($user->socket, Ev::WRITE , function () use (&$user) {
         $start=$this->getrps();
           if ($user->writeNeeded) {
-            $this->stdout("write callback");
+            $this->stdout("write callback",true);
             $this->ws_write($user);
           }
         $this->getrps($start,'>> write');
