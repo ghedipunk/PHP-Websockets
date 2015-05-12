@@ -4,14 +4,7 @@ namespace Phpws;
 class Factory implements \Phpws\Interfaces\Factory
 {
 
-  private $config;
-
-  public function __construct($config)
-  {
-    $this->config = $config;
-  }
-
-  public static function create($objectName)
+  public static function create($objectName, array $args = null)
   {
     $config = \Phpws\GlobalConfig::getSingleton();
 

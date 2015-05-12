@@ -6,11 +6,11 @@ class GlobalConfig implements \Phpws\Interfaces\GlobalConfig
 
   private $config = null;
   // Protected so that we can enforce the singleton pattern
-  protected function __construct()
+  protected function __construct($confFile)
   {
-    if (file_exists('config/config.ini'))
+    if (file_exists($confFile))
     {
-      if (($conf = parse_ini_file('config/config.ini', true)) !== false)
+      if (($conf = parse_ini_file($confFile, true)) !== false)
       {
         $this->config = $conf;
       }
@@ -61,13 +61,16 @@ class GlobalConfig implements \Phpws\Interfaces\GlobalConfig
    * So if you really want to swap out the global configuration class, write a new front
    * controller... That's what they're there for.
    */
-  public static function getSingleton()
+  public static function getSingleton($confFile = 'config/config.ini', $reset = false)
   {
     static $instance = null;
 
-    if ($instance === null)
+    if ($instance === null || $reset)
     {
-      $instance = new \Phpws\GlobalConfig();
+      if (file_exists($confFile))
+      {
+        $instance = new \Phpws\GlobalConfig($confFile);
+      }
     }
 
     return $instance;
