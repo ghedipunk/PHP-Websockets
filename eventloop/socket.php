@@ -1,10 +1,10 @@
 <?php 
 
 // Default method 
-trait eventloop {
+trait eventloop_socket {
   public function run() {
     $this->mem = memory_get_usage();
-	  $this->stdout("RUNNING with select() method default");
+    $this->stdout("RUNNING with select() method default");
     while(true) {
       if (empty($this->readWatchers)) {
         $this->readWatchers['m'] = $this->master;
