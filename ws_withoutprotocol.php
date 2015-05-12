@@ -1,5 +1,7 @@
 #!/usr/bin/env php
 <?php
+//Same purpose of '@' doing it once
+error_reporting(E_ERROR);  // only show error that will break the server.
 
 //a simple autoload 
 // Structure of $class = directory_filename
@@ -32,14 +34,15 @@ class echoServer extends core_websockets {
   //protected $maxBufferSize = 1048576; //1MB... overkill for an echo server, but potentially plausible for other applications.
   
   protected function onmessage (&$user, $message) {
-    $this->broadcast($message,$user);
-    //$this->send($user,$message);
+    $this->broadcast($message,$user); //broadcasting message to everyone 
+    //$this->send($user,$message);   // sending only to current client
   }
   
-  protected function onopen ($user) {
+  protected function onopen (&$user) {
     // Do nothing: This is just an echo server, there's no need to track the user.
     // However, if we did care about the users, we would probably have a cookie to
     // parse at this step, would be looking them up in permanent storage, etc.
+    // Also you can use this for sending a welcome message to the newly client.
   }
   
   protected function onclose ($user) {
@@ -50,16 +53,5 @@ class echoServer extends core_websockets {
 }
 
 $echo = new echoServer("0.0.0.0","9000");
-//
-
 
 $echo->run();
-
-/*
-try {
-  $echo->run();
-}
-catch (Exception $e) {
-  $echo->stdout($e->getMessage());
-}
-*/
