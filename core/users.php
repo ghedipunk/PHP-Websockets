@@ -4,13 +4,15 @@ class WebSocketUser {
 
   public $socket;
   public $id;
-  public $headers = array();
-  public $handshake = false;
+  public $watcher;
+  public $headers = NULL;
+  public $handshaked = false;
 
   public $handlingPartialPacket = false;
-  public $partialBuffer = "";
+  public $readBuffer = "";
+  public $writeNeeded = false;
+  public $writeBuffer = "";
 
-  public $sendingContinuous = false;
   public $partialMessage = "";
   
   public $hasSentClose = false;

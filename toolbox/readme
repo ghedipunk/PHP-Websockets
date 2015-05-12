@@ -1,0 +1,5 @@
+The toolbox directory will be for putting the class you made and want to add to the server.
+
+Just make sure you respect classname structure for autoload to kickin as 
+
+classname MUST be composed of directory_classname you only have to prepend 'toolbox_' to the classname.
