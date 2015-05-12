@@ -14,22 +14,27 @@ html,body {
 }
 </style>
 <script type="text/javascript">
-var socket;
+var ws;
+
 
 function init() {
-	var host = "ws://127.0.0.1:9000/echobot"; // SET THIS TO YOUR SERVER
+	var host = "ws://127.0.0.1:9000/echobot"; // SET THIS TO YOUR SERVER host:port/ressource
 	try {
-		socket = new WebSocket(host);
-		log('WebSocket - status '+socket.readyState);
-		socket.onopen    = function(msg) { 
-							   log("Welcome - status "+this.readyState); 
-						   };
-		socket.onmessage = function(msg) { 
-							   log("Received: "+msg.data); 
-						   };
-		socket.onclose   = function(msg) { 
-							   log("Disconnected - status "+this.readyState); 
-						   };
+		ws = new WebSocket(host); // (host,protocol) protocol placed in order of priority
+		log('WebSocket - status '+ws.readyState);
+		ws.onopen    = function(msg) {
+			log("Welcome - status "+this.readyState);
+		};
+		ws.onmessage = function(msg) {
+			log("Received: "+msg.data); 
+		};
+		ws.onerror   = function(msg) {
+		        console.log(msg); //helpfull for debugging
+		};
+		ws.onclose   = function(msg) { 
+			console.log(msg);
+			log("Disconnected - status "+this.readyState); 
+		};
 	}
 	catch(ex){ 
 		log(ex); 
@@ -48,17 +53,17 @@ function send(){
 	txt.value="";
 	txt.focus();
 	try { 
-		socket.send(msg); 
+		ws.send(msg); 
 		log('Sent: '+msg); 
 	} catch(ex) { 
 		log(ex); 
 	}
 }
 function quit(){
-	if (socket != null) {
+	if (ws != null) {
 		log("Goodbye!");
-		socket.close();
-		socket=null;
+		ws.close();
+		ws=null;
 	}
 }
 
