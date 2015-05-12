@@ -66,13 +66,35 @@ abstract class WebSocketServer {
           }
         } 
         else {
-          $numBytes = @socket_recv($socket,$buffer,$this->maxBufferSize,0); 
+          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize,0); 
           if ($numBytes === false) {
-            throw new Exception('Socket error: ' . socket_strerror(socket_last_error($socket)));
+            $tcpErrNo = socket_last_error($socket);
+            switch ($tcpErrNo)
+            {
+              case 102: // ENETRESET    -- Network dropped connection because of reset
+              case 103: // ECONNABORTED -- Software caused connection abort
+              case 104: // ECONNRESET   -- Connection reset by peer
+              case 108: // ESHUTDOWN    -- Cannot send after transport endpoint shutdown -- probably more of an error on our part, if we're trying to write after the socket is closed.  Probably not a critical error, though.
+              case 110: // ETIMEDOUT    -- Connection timed out
+              case 111: // ECONNREFUSED -- Connection refused -- We shouldn't see this one, since we're listening... Still not a critical error.
+              case 112: // EHOSTDOWN    -- Host is down -- Again, we shouldn't see this, and again, not critical because it's just one connection and we still want to listen to/for others.
+              case 113: // EHOSTUNREACH -- No route to host
+              case 121: // EREMOTEIO    -- Rempte I/O error -- Their hard drive just blew up.
+              case 125: // ECANCELED    -- Operation canceled
+                
+                $this->stderr("Unusual disconnect on socket " . $socket);
+                $this->disconnect($socket); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
+                socket_clear_error($socket);
+                break;
+              default:
+
+                throw new Exception('Socket error: ' . socket_strerror($tcpErrNo));
+            }
+            
           }
           elseif ($numBytes == 0) {
             $this->disconnect($socket);
-            $this->stdout("Client disconnected. TCP connection lost: " . $socket);
+            $this->stderr("Client disconnected. TCP connection lost: " . $socket);
           } 
           else {
             $user = $this->getUserBySocket($socket);
