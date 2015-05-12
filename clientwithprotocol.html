@@ -51,6 +51,7 @@ function init() {
 			console.log(msg); //helpfull for debugging
 		};
 		ws.onclose   = function(msg) { 
+			console.log(msg);
 			log("Disconnected - status "+this.readyState); 
 		};
 	}
