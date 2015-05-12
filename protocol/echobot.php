@@ -13,7 +13,7 @@ trait protocol_echobot {
       case "thanks": $this->send($user,"you're welcome");                    break;
       case "bye"   : $this->send($user,"bye");                               break;
       case "help"  : $this->send($user,"I respond to this command : hello,hi,name,age,date,time,thanks,bye,help"); break;
-      default      : $this->send($user,"Sorry I don't understand. Can you repeat? try 'help'");
+      default      : $this->send($user,"Repeat: ".$action." type: 'help'");
     }
   }
 }
