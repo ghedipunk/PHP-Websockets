@@ -84,7 +84,7 @@ abstract class WebSocketServer {
                 
                 $this->stderr("Unusual disconnect on socket " . $socket);
                 $this->disconnect($socket); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
-                socket_clear_error($socket);
+                // socket_clear_error($socket);
                 break;
               default:
 
