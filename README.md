@@ -34,3 +34,8 @@ Opera               12.10
 Android Browser     4.4
 
 Note: Current browser support is available at http://en.wikipedia.org/wiki/WebSocket#Browser_support under the RFC-6455 row.
+
+For Support
+-----------
+
+Right now, the only support available is in the Github Issues ( https://github.com/ghedipunk/PHP-Websockets/issues ).  Once I reach my $250/mo Patreon reward level, I'll be able to maintain support forums for non-core code issues.  If you'd like to support the project, and bring these forums closer to reality, you can do so at https://www.patreon.com/ghedipunk .
