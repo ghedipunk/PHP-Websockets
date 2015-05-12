@@ -68,8 +68,8 @@ abstract class WebSocketServer {
         else {
           $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize,0); 
           if ($numBytes === false) {
-            $tcpErrNo = socket_last_error($socket);
-            switch ($tcpErrNo)
+            $sockErrNo = socket_last_error($socket);
+            switch ($sockErrNo)
             {
               case 102: // ENETRESET    -- Network dropped connection because of reset
               case 103: // ECONNABORTED -- Software caused connection abort
@@ -83,12 +83,11 @@ abstract class WebSocketServer {
               case 125: // ECANCELED    -- Operation canceled
                 
                 $this->stderr("Unusual disconnect on socket " . $socket);
-                $this->disconnect($socket); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
-                // socket_clear_error($socket);
+                $this->disconnect($socket, true, $sockErrNo); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
                 break;
               default:
 
-                $this->stderr('Socket error: ' . socket_strerror($tcpErrNo));
+                $this->stderr('Socket error: ' . socket_strerror($sockErrNo));
             }
             
           }
@@ -122,7 +121,7 @@ abstract class WebSocketServer {
     $this->connecting($user);
   }
 
-  protected function disconnect($socket, $triggerClosed = true) {
+  protected function disconnect($socket, $triggerClosed = true, $sockErrNo = null) {
     $disconnectedUser = $this->getUserBySocket($socket);
     
     if ($disconnectedUser !== null) {
@@ -131,7 +130,11 @@ abstract class WebSocketServer {
       if (array_key_exists($disconnectedUser->id, $this->sockets)) {
         unset($this->sockets[$disconnectedUser->id]);
       }
-        
+      
+      if (!is_null($sockErrNo)) {
+        socket_clear_error($socket);
+      }
+
       if ($triggerClosed) {
         $this->closed($disconnectedUser);
         socket_close($disconnectedUser->socket);
