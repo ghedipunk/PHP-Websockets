@@ -66,13 +66,34 @@ abstract class WebSocketServer {
           }
         } 
         else {
-          $numBytes = @socket_recv($socket,$buffer,$this->maxBufferSize,0); 
+          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize,0); 
           if ($numBytes === false) {
-            throw new Exception('Socket error: ' . socket_strerror(socket_last_error($socket)));
+            $sockErrNo = socket_last_error($socket);
+            switch ($sockErrNo)
+            {
+              case 102: // ENETRESET    -- Network dropped connection because of reset
+              case 103: // ECONNABORTED -- Software caused connection abort
+              case 104: // ECONNRESET   -- Connection reset by peer
+              case 108: // ESHUTDOWN    -- Cannot send after transport endpoint shutdown -- probably more of an error on our part, if we're trying to write after the socket is closed.  Probably not a critical error, though.
+              case 110: // ETIMEDOUT    -- Connection timed out
+              case 111: // ECONNREFUSED -- Connection refused -- We shouldn't see this one, since we're listening... Still not a critical error.
+              case 112: // EHOSTDOWN    -- Host is down -- Again, we shouldn't see this, and again, not critical because it's just one connection and we still want to listen to/for others.
+              case 113: // EHOSTUNREACH -- No route to host
+              case 121: // EREMOTEIO    -- Rempte I/O error -- Their hard drive just blew up.
+              case 125: // ECANCELED    -- Operation canceled
+                
+                $this->stderr("Unusual disconnect on socket " . $socket);
+                $this->disconnect($socket, true, $sockErrNo); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
+                break;
+              default:
+
+                $this->stderr('Socket error: ' . socket_strerror($sockErrNo));
+            }
+            
           }
           elseif ($numBytes == 0) {
             $this->disconnect($socket);
-            $this->stdout("Client disconnected. TCP connection lost: " . $socket);
+            $this->stderr("Client disconnected. TCP connection lost: " . $socket);
           } 
           else {
             $user = $this->getUserBySocket($socket);
@@ -84,32 +105,8 @@ abstract class WebSocketServer {
               $this->doHandshake($user,$buffer);
             } 
             else {
-              if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                if($user->hasSentClose) {
-                  $this->disconnect($user->socket);
-                  $this->stdout("Client disconnected. Sent close: " . $socket);
-                }
-                else {
-                  $this->process($user, $message); // todo: Re-check this.  Should already be UTF-8.
-                }
-              } 
-              else {
-                do {
-                  $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,MSG_PEEK);
-                  if ($numByte > 0) {
-                    $numByte = @socket_recv($socket,$buffer,$this->maxBufferSize,0);
-                    if (($message = $this->deframe($buffer, $user)) !== FALSE) {
-                      if($user->hasSentClose) {
-                        $this->disconnect($user->socket);
-                        $this->stdout("Client disconnected. Sent close: " . $socket);
-                      }
-                      else {
-                       $this->process($user,$message);
-                      }
-                    }
-                  }
-                } while($numByte > 0);
-              }
+              //split packet into frame and send it to deframe
+              $this->split_packet($numBytes,$buffer, $user);
             }
           }
         }
@@ -124,7 +121,7 @@ abstract class WebSocketServer {
     $this->connecting($user);
   }
 
-  protected function disconnect($socket, $triggerClosed = true) {
+  protected function disconnect($socket, $triggerClosed = true, $sockErrNo = null) {
     $disconnectedUser = $this->getUserBySocket($socket);
     
     if ($disconnectedUser !== null) {
@@ -133,7 +130,11 @@ abstract class WebSocketServer {
       if (array_key_exists($disconnectedUser->id, $this->sockets)) {
         unset($this->sockets[$disconnectedUser->id]);
       }
-        
+      
+      if (!is_null($sockErrNo)) {
+        socket_clear_error($socket);
+      }
+
       if ($triggerClosed) {
         $this->closed($disconnectedUser);
         socket_close($disconnectedUser->socket);
@@ -339,6 +340,60 @@ abstract class WebSocketServer {
 
     return chr($b1) . chr($b2) . $lengthField . $message;
   }
+  
+  //check packet if he have more than one frame and process each frame individually
+  protected function split_packet($length,$packet, $user) {
+    //add PartialPacket and calculate the new $length
+    if ($user->handlingPartialPacket) {
+      $packet = $user->partialBuffer . $packet;
+      $user->handlingPartialPacket = false;
+      $length=strlen($packet);
+    }
+    $fullpacket=$packet;
+    $frame_pos=0;
+    $frame_id=1;
+
+    while($frame_pos<$length) {
+      $headers = $this->extractHeaders($packet);
+      $headers_size = $this->calcoffset($headers);
+      $framesize=$headers['length']+$headers_size;
+      $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
+
+      //split frame from packet and process it
+      $frame=substr($fullpacket,$frame_pos,$framesize);
+
+      if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
+        if ($user->hasSentClose) {
+	  $this->disconnect($user);
+	} else {
+	  if (mb_check_encoding($message,'UTF-8')) { 
+	    //$this->stdout("Is UTF-8\n".$message); 
+	    $this->process($user, $message);
+	  } else {
+	    $this->stdout("not UTF-8\n");
+	  }
+        }
+      }	
+      //get the new position also modify packet data
+      $frame_pos+=$framesize;
+      $packet=substr($fullpacket,$frame_pos);
+      $frame_id++;
+    }
+    $this->stdout("########    PACKET END         #########");
+  }
+
+  protected function calcoffset($headers) {
+    $offset = 2;
+    if ($headers['hasmask']) {
+      $offset += 4;
+    }
+    if ($headers['length'] > 65535) {
+      $offset += 8;
+    } elseif ($headers['length'] > 125) {
+      $offset += 2;
+    }
+    return $offset;
+  }
 
   protected function deframe($message, &$user) {
     //echo $this->strtohex($message);
@@ -364,12 +419,14 @@ abstract class WebSocketServer {
         break;
     }
 
+    /* Deal by split_packet() as now deframe() do only one frame at a time.
     if ($user->handlingPartialPacket) {
       $message = $user->partialBuffer . $message;
       $user->handlingPartialPacket = false;
       return $this->deframe($message, $user);
     }
-
+    */
+    
     if ($this->checkRSVBits($headers,$user)) {
       return false;
     }
