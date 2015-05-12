@@ -1,7 +1,7 @@
 <?php
 namespace Phpws\Interfaces
 
-interface HostChecker
+class HostChecker
 {
-  public function checkHost($hostname);
+
 }
