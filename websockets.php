@@ -88,7 +88,7 @@ abstract class WebSocketServer {
                 break;
               default:
 
-                throw new Exception('Socket error: ' . socket_strerror($tcpErrNo));
+                $this->stderr('Socket error: ' . socket_strerror($tcpErrNo));
             }
             
           }
