@@ -534,12 +534,10 @@ abstract class WebSocketServer {
       return $payload;
     }
 
-    while (strlen($effectiveMask) < strlen($payload)) {
-      $effectiveMask .= $mask;
-    }
-    while (strlen($effectiveMask) > strlen($payload)) {
-      $effectiveMask = substr($effectiveMask,0,-1);
-    }
+    $effectiveMask = str_repeat($mask , ($headers['length']/4)+1 );
+    $over=$headers['length']-strlen($effectiveMask);
+    $effectiveMask=substr($effectiveMask,0,$over);
+    
     return $effectiveMask ^ $payload;
   }
   protected function checkRSVBits($headers,$user) { // override this method if you are using an extension where the RSV bits are used.
