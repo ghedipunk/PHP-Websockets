@@ -364,7 +364,7 @@ abstract class WebSocketServer {
 
       if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
-          $this->disconnect($user);
+          $this->disconnect($user->socket);
         } else {
           if (function_exists('mb_check_encoding')) {
             if (mb_check_encoding($message,'UTF-8')) { 
