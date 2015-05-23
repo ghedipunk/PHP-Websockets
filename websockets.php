@@ -364,7 +364,7 @@ abstract class WebSocketServer {
 
       if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
-          $this->disconnect($user);
+          $this->disconnect($user->socket);
         } else {
           if (preg_match('//u', $message)) {
             //$this->stdout("Is UTF-8\n".$message); 
