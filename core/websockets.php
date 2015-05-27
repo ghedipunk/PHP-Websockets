@@ -39,7 +39,6 @@ abstract class core_websockets {
     socket_bind($this->master, $addr, $port)                      or die("Failed: socket_bind()");
     socket_listen($this->master,1024)                             or die("Failed: socket_listen()");
     socket_set_nonblock($this->master)							              or die("Failed: socket_set_nonblock()");
-    $this->sockets['m'] = $this->master;
     $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
   }
 
