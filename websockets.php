@@ -42,6 +42,11 @@ abstract class WebSocketServer {
     $result = @socket_write($user->socket, $message, strlen($message));
   }
 
+  protected function tick() {
+    // Override this for any process that should happen periodically.  Will happen at least once
+    // per second, but possibly more often.
+  }
+
   /**
    * Main processing loop
    */
@@ -52,6 +57,7 @@ abstract class WebSocketServer {
       }
       $read = $this->sockets;
       $write = $except = null;
+      $this->tick();
       @socket_select($read,$write,$except,0);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
@@ -66,7 +72,7 @@ abstract class WebSocketServer {
           }
         } 
         else {
-          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize,0); 
+          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize, 1); 
           if ($numBytes === false) {
             $sockErrNo = socket_last_error($socket);
             switch ($sockErrNo)
