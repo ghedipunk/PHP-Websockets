@@ -58,7 +58,7 @@ abstract class WebSocketServer {
       $read = $this->sockets;
       $write = $except = null;
       $this->tick();
-      @socket_select($read,$write,$except,0);
+      @socket_select($read,$write,$except,1);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
           $client = socket_accept($socket);
@@ -72,7 +72,7 @@ abstract class WebSocketServer {
           }
         } 
         else {
-          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize, 1); 
+          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize, 0); 
           if ($numBytes === false) {
             $sockErrNo = socket_last_error($socket);
             switch ($sockErrNo)
