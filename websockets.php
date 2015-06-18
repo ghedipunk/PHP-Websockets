@@ -52,7 +52,7 @@ abstract class WebSocketServer {
       }
       $read = $this->sockets;
       $write = $except = null;
-      @socket_select($read,$write,$except,null);
+      @socket_select($read,$write,$except,0);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
           $client = socket_accept($socket);
