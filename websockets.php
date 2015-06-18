@@ -57,11 +57,19 @@ abstract class WebSocketServer {
   protected function _tick() {
     // Core maintenance processes, such as retrying failed messages.
     foreach ($this->heldMessages as $key => $hm) {
+      $found = false;
       foreach ($this->users as $currentUser) {
-        if ($hm['user']->socket == $currentUser->socket && $currentUser->handshake) {
-          unset($this->heldMessages[$key]);
-          $this->send($currentUser, $hm['message']);
+        if ($hm['user']->socket == $currentUser->socket) {
+          $found = true;
+          if ($currentUser->handshake) {
+            unset($this->heldMessages[$key]);
+            $this->send($currentUser, $hm['message']);
+          }
         }
+      }
+      if (!$found) {
+        // If they're no longer in the list of connected users, drop the message.
+        unset($this->heldMessages[$key];
       }
     }
   }
