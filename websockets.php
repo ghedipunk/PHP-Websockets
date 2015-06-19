@@ -10,6 +10,7 @@ abstract class WebSocketServer {
   protected $master;
   protected $sockets                              = array();
   protected $users                                = array();
+  protected $heldMessages                         = array();
   protected $interactive                          = true;
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
@@ -36,10 +37,41 @@ abstract class WebSocketServer {
     // the handshake has completed.
   }
   
-  protected function send($user,$message) {
-    //$this->stdout("> $message");
-    $message = $this->frame($message,$user);
-    $result = @socket_write($user->socket, $message, strlen($message));
+  protected function send($user, $message) {
+    if ($user->handshake) {
+      $message = $this->frame($message,$user);
+      $result = @socket_write($user->socket, $message, strlen($message));
+    }
+    else {
+      // User has not yet performed their handshake.  Store for sending later.
+      $holdingMessage = array('user' => $user, 'message' => $message);
+      $this->heldMessages[] = $holdingMessage;
+    }
+  }
+
+  protected function tick() {
+    // Override this for any process that should happen periodically.  Will happen at least once
+    // per second, but possibly more often.
+  }
+
+  protected function _tick() {
+    // Core maintenance processes, such as retrying failed messages.
+    foreach ($this->heldMessages as $key => $hm) {
+      $found = false;
+      foreach ($this->users as $currentUser) {
+        if ($hm['user']->socket == $currentUser->socket) {
+          $found = true;
+          if ($currentUser->handshake) {
+            unset($this->heldMessages[$key]);
+            $this->send($currentUser, $hm['message']);
+          }
+        }
+      }
+      if (!$found) {
+        // If they're no longer in the list of connected users, drop the message.
+        unset($this->heldMessages[$key];
+      }
+    }
   }
 
   /**
@@ -52,7 +84,9 @@ abstract class WebSocketServer {
       }
       $read = $this->sockets;
       $write = $except = null;
-      @socket_select($read,$write,$except,null);
+      $this->_tick();
+      $this->tick();
+      @socket_select($read,$write,$except,1);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
           $client = socket_accept($socket);
@@ -66,7 +100,7 @@ abstract class WebSocketServer {
           }
         } 
         else {
-          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize,0); 
+          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize, 0); 
           if ($numBytes === false) {
             $sockErrNo = socket_last_error($socket);
             switch ($sockErrNo)
@@ -357,24 +391,19 @@ abstract class WebSocketServer {
       $headers = $this->extractHeaders($packet);
       $headers_size = $this->calcoffset($headers);
       $framesize=$headers['length']+$headers_size;
-      $this->stdout("frame #".$frame_id." position : ".$frame_pos." msglen : ".$headers['length']." + headers_size ".$headers_size." = framesize of ".$framesize);
-
+      
       //split frame from packet and process it
       $frame=substr($fullpacket,$frame_pos,$framesize);
 
       if (($message = $this->deframe($frame, $user,$headers)) !== FALSE) {
         if ($user->hasSentClose) {
-          $this->disconnect($user);
+          $this->disconnect($user->socket);
         } else {
-          if (function_exists('mb_check_encoding')) {
-            if (mb_check_encoding($message,'UTF-8')) { 
-              $this->process($user, $message);
-            } else {
-              $this->stderr("not UTF-8\n");
-            }
-          }
-          else {
+          if (preg_match('//u', $message)) {
+            //$this->stdout("Is UTF-8\n".$message); 
             $this->process($user, $message);
+          } else {
+            $this->stderr("not UTF-8\n");
           }
         }
       } 
@@ -383,7 +412,6 @@ abstract class WebSocketServer {
       $packet=substr($fullpacket,$frame_pos);
       $frame_id++;
     }
-    $this->stdout("########    PACKET END         #########");
   }
 
   protected function calcoffset($headers) {
