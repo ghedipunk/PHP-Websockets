@@ -69,7 +69,7 @@ abstract class WebSocketServer {
       }
       if (!$found) {
         // If they're no longer in the list of connected users, drop the message.
-        unset($this->heldMessages[$key];
+        unset($this->heldMessages[$key]);
       }
     }
   }
