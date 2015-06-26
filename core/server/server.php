@@ -4,25 +4,25 @@ namespace Phpws\Core;
 abstract class Server implements \Phpws\Interfaces\WebsocketServer {
 
   // Configuration Start 
-  protected $debug_mode				  = false; // debug tool I left in code. verbose mode
-  protected $max_request_handshake_size 	  = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
+  protected $debug_mode = false; // debug tool I left in code. verbose mode
+  protected $max_request_handshake_size  = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B
   // There is no way to use http status code to send some application error to client we MUST open the connection first
-  protected $max_client                 	  = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
-  protected $error_maxclien	 		  = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
-  protected $headerOriginRequired                 = false;
-  protected $headerProtocolRequired               = false;
-  protected $willSupportExtensions                = false;  // Turn it to true if you support any extensions
+  protected $max_client = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
+  protected $error_maxclien  = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client.
+  protected $headerOriginRequired  = false;
+  protected $headerProtocolRequired = false;
+  protected $willSupportExtensions = false;  // Turn it to true if you support any extensions
 
   // TODO : these 2 variables will be used to protect OOM and dynamically set max_client based on mem allowed per user
-  protected $max_writeBuffer			  = 49152; //48K out 
-  protected $max_readBuffer			  = 49152; //48K in 
+  protected $max_writeBuffer = 49152; //48K out
+  protected $max_readBuffer = 49152; //48K in
   // Configuration End
   
-  protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should inherit from WebSocketUser.
+  protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should implement \Phpws\Interfaces\WebsocketUser.
   protected $maxBufferSize;        
   protected $master;
-  protected $readWatchers                         = array();
-  protected $writeWatchers                        = null;
+  protected $readers                         = array();
+  protected $writers                        = null;
   protected $users                                = array();
   protected $interactive                          = true;
   protected $nbclient                             = 0;
@@ -82,6 +82,10 @@ abstract class Server implements \Phpws\Interfaces\WebsocketServer {
     //$this->stdout("> $message");
     $message = $this->frame($message);
     $this->ws_write($user, $message);
+  }
+
+  public function setEventListener($event, $callback) {
+
   }
 
   /**
