@@ -1,5 +1,5 @@
 <?php
-namespace Phpws\Core;
+namespace Phpws\Core\Server;
 
 abstract class Server implements \Phpws\Interfaces\WebsocketServer {
 
