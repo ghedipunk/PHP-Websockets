@@ -1,9 +1,7 @@
 <?php
+namespace Phpws\Core;
 
-//require_once('./daemonize.php');
-require_once('./core/users.php');
-
-abstract class core_websockets {
+abstract class Server implements \Phpws\Interfaces\WebsocketServer {
 
   // Configuration Start 
   protected $debug_mode				  = false; // debug tool I left in code. verbose mode
@@ -43,11 +41,23 @@ abstract class core_websockets {
     $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
   }
 
-  abstract protected function onmessage(&$user,$message); // Called immediately when the data is recieved. 
-  abstract protected function onopen(&$user);        // Called after the handshake response is sent to the client.
-  abstract protected function onclose($user);           // Called after the connection is closed.
-  abstract public    function run();                   // event loop within trait in eventloop.php support now (socket,libev)
-  abstract protected function addWritewatchers(&$user,$open);
+
+
+  protected function onmessage(&$user,$message) {
+
+  }
+
+  protected function onopen(&$user) {
+
+  }
+
+  protected function onclose($user) {
+
+  }
+
+  protected function addWriteWatchers(&$user,$open) {
+
+  }
 
   protected function connecting($user) {
     // Override to handle a connecting user, after the instance of the User is created, but before

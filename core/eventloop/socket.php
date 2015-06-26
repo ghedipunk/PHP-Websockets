@@ -1,7 +1,8 @@
 <?php 
+namespace Phpws\Core;
 
 // Default method 
-trait eventloop_socket {
+trait Eventloop_socket {
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");

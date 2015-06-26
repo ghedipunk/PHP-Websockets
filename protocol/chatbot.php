@@ -1,7 +1,7 @@
 <?php 
 
-trait protocol_echobot {
-  function echobot(&$user,$action) {
+trait protocol_chatbot {
+  function chatbot(&$user,$action) {
     $this->stdout("< ".$action."\r\n",true);
     switch($action){
       case "hello" : $this->send($user,"hello human");                       break;
