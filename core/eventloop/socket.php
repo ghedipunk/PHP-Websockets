@@ -1,16 +1,17 @@
 <?php 
+namespace Phpws\Core\Eventloop;
 
 // Default method 
-trait eventloop_socket {
+trait Socket {
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");
     while(true) {
       if (empty($this->readWatchers)) {
-        $this->readWatchers['m'] = $this->master;
+        $this->readers['m'] = $this->master;
       }
-      $read = $this->readWatchers;
-      $write = $this->writeWatchers;
+      $read = $this->readers;
+      $write = $this->writers;
       $except = null;
       socket_select($read,$write,$except,null);
       //outgoing data -- sending buffered data to client

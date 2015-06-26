@@ -1,15 +1,5 @@
 #!/usr/bin/env php
 <?php
-// Same purpose of '@' doing it once
-// Dev environement you should use E_ALL ( unless you like having headache when debugging)
-error_reporting(E_ERROR);  // only show error that will break the server. should be enought for Production
-
-//a simple autoload 
-// Structure of $class = directory_filename
-function __autoload($class) {
-  $class=str_replace('_',DIRECTORY_SEPARATOR,$class);
-  require_once('./' . $class . '.php');
-}
 
 class echoServer extends core_websockets {
   // eventloop_[socket,libev] are the eventloop handler you can use. It's set to socket by default.

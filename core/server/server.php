@@ -1,4 +1,5 @@
 <?php
+<<<<<<< HEAD:core/websockets.php
 /**
  * Contains the core Websockets server class
  */
@@ -84,6 +85,136 @@ class Websockets {
                     $this->stdout("same channel ".$channel,true);
                     $this->ws_write($user, $message);
                 }
+=======
+namespace Phpws\Core\Server;
+
+abstract class Server implements \Phpws\Interfaces\WebsocketServer {
+
+  // Configuration Start 
+  protected $debug_mode = false; // debug tool I left in code. verbose mode
+  protected $max_request_handshake_size  = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B
+  // There is no way to use http status code to send some application error to client we MUST open the connection first
+  protected $max_client = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
+  protected $error_maxclien  = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client.
+  protected $headerOriginRequired  = false;
+  protected $headerProtocolRequired = false;
+  protected $willSupportExtensions = false;  // Turn it to true if you support any extensions
+
+  // TODO : these 2 variables will be used to protect OOM and dynamically set max_client based on mem allowed per user
+  protected $max_writeBuffer = 49152; //48K out
+  protected $max_readBuffer = 49152; //48K in
+  // Configuration End
+  
+  protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.  The custom user class should implement \Phpws\Interfaces\WebsocketUser.
+  protected $maxBufferSize;        
+  protected $master;
+  protected $readers                         = array();
+  protected $writers                        = null;
+  protected $users                                = array();
+  protected $interactive                          = true;
+  protected $nbclient                             = 0;
+
+
+  protected $mem;
+   
+  function __construct($addr, $port, $bufferLength = 16384 ) {
+    $this->maxBufferSize = $bufferLength;
+    $this->master = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)  or die("Failed: socket_create()");
+    socket_set_option($this->master, SOL_SOCKET, SO_REUSEADDR, 1) or die("Failed: socket_option()");
+    socket_bind($this->master, $addr, $port)                      or die("Failed: socket_bind()");
+    socket_listen($this->master,1024)                             or die("Failed: socket_listen()");
+    socket_set_nonblock($this->master)							              or die("Failed: socket_set_nonblock()");
+    $this->sockets['m'] = $this->master;
+    $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
+  }
+
+
+
+  protected function onmessage(&$user,$message) {
+
+  }
+
+  protected function onopen(&$user) {
+
+  }
+
+  protected function onclose($user) {
+
+  }
+
+  protected function addWriteWatchers(&$user,$open) {
+
+  }
+
+  protected function connecting($user) {
+    // Override to handle a connecting user, after the instance of the User is created, but before
+    // the handshake has completed.
+  }
+
+  //here an example how to use a single ws app to handle multiple virtualhost / 
+  protected function broadcast($msg,&$sender) {
+    $vhost=$sender->headers['host'].$sender->headers['get'];
+    $message = $this->frame($msg);
+    foreach ($this->users as $user) {
+      if ($user->handshaked) { // prevent sending data to user who have not complete the handshake session.
+        if ($vhost ==($user->headers['host'].$user->headers['get'])) {
+          $this->stdout("same channel ".$channel,true);
+          $this->ws_write($user, $message);
+        }
+      }
+    }
+  }
+   
+  protected function send(&$user,$message) {
+    //$this->stdout("> $message");
+    $message = $this->frame($message);
+    $this->ws_write($user, $message);
+  }
+
+  public function setEventListener($event, $callback) {
+
+  }
+
+  /**
+   * Read callback on socket
+   */
+
+  protected function cb_read(&$user) {
+    $socket=$user->socket;
+    $numBytes = socket_recv($socket,$buffer,$this->maxBufferSize,0); 
+    if ($numBytes === false) {
+      $this->stdout('Socket error: ' . socket_strerror(socket_last_error($socket)));
+    }
+    elseif ($numBytes == 0) {
+      $this->disconnect($user);
+      $this->stdout("Client disconnected. TCP connection lost: " . $socket);
+    } 
+    else {
+      if (!$user->handshaked) {
+        if ($user->handlingPartialPacket) {
+          $buffer=$user->readBuffer . $buffer;
+        }
+        //OOM protection:  prevent buffer overflow from malicious client.
+        if ( strlen($buffer)  > $this->max_request_handshake_size ) {
+	  $handshakeResponse = "HTTP/1.1 413 Request Entity Too Large"; 
+          $this->ws_write($user,$handshakeResponse);
+          $this->disconnect($user);
+        }
+	else {
+	  // If the client has finished sending the header, otherwise wait before sending our upgrade response.
+	  if (strpos($buffer, "\r\n\r\n") !== FALSE ) {
+            $this->doHandshake($user,$buffer);
+            // after handshake successfull check for maximum client reach and send msg + close the connection
+            if ($this->nbclient>$this->max_client) {
+              $message = $this->frame($this->error_maxclient);
+              $this->ws_write($user,$message);
+              $this->disconnect($user);
+            }
+            else {
+              //clear buffer & state
+              $user->handlingPartialPacket=FALSE;
+              $user->readBuffer='';
+>>>>>>> 97b6a5d1c40e9935bb9f9a1adc1a89b04be233e4:core/server/server.php
             }
         }
     }
