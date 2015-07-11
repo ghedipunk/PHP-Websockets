@@ -451,14 +451,6 @@ abstract class WebSocketServer {
         break;
     }
 
-    /* Deal by split_packet() as now deframe() do only one frame at a time.
-    if ($user->handlingPartialPacket) {
-      $message = $user->partialBuffer . $message;
-      $user->handlingPartialPacket = false;
-      return $this->deframe($message, $user);
-    }
-    */
-    
     if ($this->checkRSVBits($headers,$user)) {
       return false;
     }
@@ -554,7 +546,6 @@ abstract class WebSocketServer {
   }
 
   protected function applyMask($headers,$payload) {
-    $effectiveMask = "";
     if ($headers['hasmask']) {
       $mask = $headers['mask'];
     } 
@@ -562,14 +553,23 @@ abstract class WebSocketServer {
       return $payload;
     }
 
-    while (strlen($effectiveMask) < strlen($payload)) {
+    $effectiveMask = "";
+    $payloadLength = strlen($payload);
+    $maskLength = strlen($mask); // By standard, always 4 bytes, but the standard may change some day.  Probably won't change, but it may.
+    $effectiveMaskLength = 0;
+
+    while ($effectiveMaskLength < $payloadLength) {
       $effectiveMask .= $mask;
+      $effectiveMaskLength += $maskLength;
     }
+
     while (strlen($effectiveMask) > strlen($payload)) {
       $effectiveMask = substr($effectiveMask,0,-1);
     }
+    
     return $effectiveMask ^ $payload;
   }
+
   protected function checkRSVBits($headers,$user) { // override this method if you are using an extension where the RSV bits are used.
     if (ord($headers['rsv1']) + ord($headers['rsv2']) + ord($headers['rsv3']) > 0) {
       //$this->disconnect($user); // todo: fail connection
