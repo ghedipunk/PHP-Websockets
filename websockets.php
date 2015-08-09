@@ -1,25 +1,83 @@
 <?php
 
+/**
+ * File where the WebSocketServer::$userClass is located
+ */
 require_once('./users.php');
 
+/**
+ * Class based on PHP sockets for Websocket-based applications, keep in mind that a lot of the methods of this class are to be inherited by classes that handle the actual instance of the server
+ */
 abstract class WebSocketServer 
 {
+	/**
+	 * Name of the class that will hold information about each user connected to the server
+	 * @var string
+	 */
 	protected $userClass = 'WebSocketUser'; // redefine this if you want a custom user class.The custom user class should inherit from WebSocketUser.
 
+	/**
+	 * Maximum size of the buffer
+	 * @var integer
+	 */
 	protected $maxBufferSize; 
 
+	/**
+	 * Master socket, should only be handled by the WebSocketServer class
+	 * @var Socket
+	 */
 	protected $master;
 
-	protected $sockets= array();
-	protected $users= array();
+	/**
+	 * Contains the sockets of all connected users in the server
+	 * @var array
+	 */
+	protected $sockets = array();
+
+	/**
+	 * Contains all the userClass instances created when an user connects
+	 * @var array
+	 */
+	protected $users = array();
+
+	/**
+	 * Array that contains messages that have not yet been sent (Eg. No handshake completed)
+	 * @var array
+	 */
 	protected $heldMessages = array();
 
-	protected $interactive= true;
+	/**
+	 * Should we make the server interactive? (Eg. Allow the server to echo)
+	 * @var boolean
+	 */
+	protected $interactive = true;
 
+	/**
+	 * Should we require an origin HTTP header when a new connection comes in?
+	 * @var boolean
+	 */
 	protected $headerOriginRequired = false;
+
+	/**
+	 * Should we require a secondary protocol exclusive for handshakes? (Eg. Verify the server is willing to do a subprotocol)
+	 * @var boolean
+	 * @see https://tools.ietf.org/html/rfc6455#section-11.3.4 Explanation
+	 */
 	protected $headerSecWebSocketProtocolRequired = false;
+
+	/**
+	 * Should we require information about the protocol-level extensions that'll be used? 
+	 * @var boolean
+	 * @see https://tools.ietf.org/html/rfc6455#section-11.3.2 Explanation
+	 */
 	protected $headerSecWebSocketExtensionsRequired = false;
 
+	/**
+	 * Constructs the class, but does NOT run the server
+	 * @param string   $addr         Address of the server
+	 * @param integer  $port         Port of the server
+	 * @param integer $bufferLength  Maximum buffer size
+	 */
 	function __construct($addr, $port, $bufferLength = 2048) 
 	{
 		$this->maxBufferSize = $bufferLength;
@@ -32,19 +90,48 @@ abstract class WebSocketServer
 
 		$this->sockets['m'] = $this->master;
 
-		$this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
+		$this->stdout("Server started".PHP_EOL."Listening on: $addr:$port".PHP_EOL."Master socket: ".$this->master);
 	}
 
-	abstract protected function process($user,$message); // Called immediately when the data is recieved. 
+	/**
+	 * Called when data is received (Generally to only be used on classes that will inherit the function, such as the class that extends the example 'echoServer' class)
+	 * @param  userClass $user     instance of the user that is sending the message
+	 * @param  string    $message  Message that the user is sending
+	 * @return null
+	 */
+	abstract protected function process($user, $message); // Called immediately when the data is recieved. (Generally to only be used on classes that will inherit the function, such as the class that extends the example 'echoServer' class)
+
+	/**
+	 * Called after the handshake from the server is sent to the client (user) (Generally to only be used on classes that will inherit the function, such as the class that extends the example 'echoServer' class)
+	 * @param  userClass $user instance of the user that is requesting the handshake
+	 * @return null
+	 */
 	abstract protected function connected($user);// Called after the handshake response is sent to the client.
+
+	/**
+	 * Called after an user has closed a connection (Generally to only be used on classes that will inherit the function, such as the class that extends the example 'echoServer' class)
+	 * @param  userClass $user instance of the user that has closed the connection
+	 * @return null
+	 */
 	abstract protected function closed($user); // Called after the connection is closed.
 
+	/**
+	 * Called after the creation of a new userClass instance but before handshake completion, override to handle user connections
+	 * @param  userClass $user Instance of the new user
+	 * @return null
+	 */
 	protected function connecting($user)
 	{
 		// Override to handle a connecting user, after the instance of the User is created, but before
 		// the handshake has completed.
 	}
 
+	/**
+	 * Writes a message to an user's socket connection, if a handshake has not been completed, it is kept on the WebSocketServer::heldMessages array
+	 * @param  userClass $user    Instance of the user we'll be messaging
+	 * @param  string    $message Message we'll be sending to the user
+	 * @return null
+	 */
 	protected function send($user, $message)
 	{
 		if ( $user->handshake ) 
@@ -61,12 +148,20 @@ abstract class WebSocketServer
 		}
 	}
 
+	/**
+	 * Tick method, generally called more than one time per second and can be overriden to run processes that'll be called periodically
+	 * @return null
+	 */
 	protected function tick() 
 	{
 		// Override this for any process that should happen periodically.Will happen at least once
 		// per second, but possibly more often.
 	}
 
+	/**
+	 * Server tick method, not to be overriden. Retries for failed messages kept in the heldMessages array
+	 * @return null
+	 */
 	protected function _tick() 
 	{
 		// Core maintenance processes, such as retrying failed messages.
@@ -90,15 +185,16 @@ abstract class WebSocketServer
 
 			if ( !$found ) 
 			{
-			// If they're no longer in the list of connected users, drop the message.
+				// If they're no longer in the list of connected users, drop the message.
 				unset($this->heldMessages[$key]);
 			}
 		}
 	}
 
 	/**
-	* Main processing loop
-	*/
+	 * Initilializes and runs the server (Main server loop)
+	 * @return null
+	 */
 	public function run() 
 	{
 		while( true ) 
@@ -175,12 +271,12 @@ abstract class WebSocketServer
 							if (strpos($tmp, "\n\n") === false ) 
 								continue; // If the client has not finished sending the header, then wait before sending our upgrade response.
 
-							$this->doHandshake($user,$buffer);
+							$this->doHandshake($user, $buffer);
 						} 
 						else 
 						{
 							//split packet into frame and send it to deframe
-							$this->split_packet($numBytes,$buffer, $user);
+							$this->split_packet($numBytes, $buffer, $user);
 						}
 					}
 				}
@@ -188,6 +284,11 @@ abstract class WebSocketServer
 		}
 	}
 
+	/**
+	 * Called when a new user connects to the server. Creates a new instance of userClass with the client's socket information
+	 * @param  Socket $socket Socket of the new client
+	 * @return null
+	 */
 	protected function connect($socket) 
 	{
 		$user = new $this->userClass(uniqid('u'), $socket);
@@ -198,6 +299,13 @@ abstract class WebSocketServer
 		$this->connecting($user);
 	}
 
+	/**
+	 * Called when an user disconnects from the server
+	 * @param  socket  $socket        Socket of the disconnected user
+	 * @param  boolean $triggerClosed Did we trigger the closing of the connection?
+	 * @param  integer $sockErrNo     If there was any, error code of the reason why the connection was closed.
+	 * @return null
+	 */
 	protected function disconnect($socket, $triggerClosed = true, $sockErrNo = null) 
 	{
 		$disconnectedUser = $this->getUserBySocket($socket);
@@ -225,13 +333,20 @@ abstract class WebSocketServer
 		}
 	}
 
+	/**
+	 * Performs a handshake with a new client
+	 * @param  userClass $user   Instance of the user that is requesting the handshake
+	 * @param  string    $buffer Content of the buffer of the user's socket
+	 * @return null
+	 * @todo                     Fail connection on unallowed resource retrieval method
+	 */
 	protected function doHandshake($user, $buffer) 
 	{
 		$magicGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 		$headers = array();
 
-		$lines = explode("\n",$buffer);
+		$lines = explode("\n", $buffer);
 
 		foreach ( $lines as $line ) 
 		{
@@ -312,6 +427,11 @@ abstract class WebSocketServer
 		$this->connected($user);
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to filter connections coming from certain hosts, override and return false if it's not what you would expect.
+	 * @param  string $hostName Hostname (eg. malicious-site.com or my-domain.com)
+	 * @return boolean
+	 */
 	protected function checkHost($hostName) 
 	{
 		return true; // Override and return false if the host is not one that you would expect.
@@ -319,21 +439,41 @@ abstract class WebSocketServer
 		 // but you receive a host from malicious-site.com instead.
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to check for the origin header, override and return false if it's not what you would expect.
+	 * @param  string $origin Content of the origin header
+	 * @return boolean
+	 */
 	protected function checkOrigin($origin) 
 	{
 		return true; // Override and return false if the origin is not one that you would expect.
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to validate or filter certain protocols, override and return false if it's not what you would expect.
+	 * @param  string $protocol Protocol the client is using
+	 * @return boolean
+	 */
 	protected function checkWebsocProtocol($protocol) 
 	{
 		return true; // Override and return false if a protocol is not found that you would expect.
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to validate or filter certain extensions, override and return false if it's not what you would expect.
+	 * @param  string $extensions Extensions the client is using
+	 * @return boolean
+	 */
 	protected function checkWebsocExtensions($extensions) 
 	{
 		return true; // Override and return false if an extension is not found that you would expect.
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to process a protocol. Override and return either "Sec-WebSocket-Protocol: SelectedProtocolFromClientList\r\n" or return an empty string. The carriage return/newline combo must appear at the end of a non-empty string, and must not appear at the beginning of the string nor in an otherwise empty string, or it will be considered part of the response body, which will trigger an error in the client as it will not be formatted correctly.
+	 * @param  string $protocol Protocol the client is using
+	 * @return boolean
+	 */
 	protected function processProtocol($protocol) 
 	{
 		return ""; // return either "Sec-WebSocket-Protocol: SelectedProtocolFromClientList\r\n" or return an empty string.
@@ -342,11 +482,21 @@ abstract class WebSocketServer
 		// the response body, which will trigger an error in the client as it will not be formatted correctly.
 	}
 
+	/**
+	 * Function called when we are performing a handshake, can be used to process an extension. Override and return either "Sec-WebSocket-Extensions: SelectedExtensions\r\n" or return an empty string.
+	 * @param  [type] $extensions [description]
+	 * @return [type]             [description]
+	 */
 	protected function processExtensions($extensions) 
 	{
 		return ""; // return either "Sec-WebSocket-Extensions: SelectedExtensions\r\n" or return an empty string.
 	}
 
+	/**
+	 * Returns the instance of userClass by using the socket connection
+	 * @param  socket $socket Socket we'll be looking for
+	 * @return mixed          Returns either an userClass instance or null if the user was not found
+	 */
 	protected function getUserBySocket($socket) 
 	{
 		foreach ( $this->users as $user ) 
@@ -358,18 +508,36 @@ abstract class WebSocketServer
 		return null;
 	}
 
+	/**
+	 * Echoes text into the server if the interactive property is set to true, can be overriden to handle local server information printing
+	 * @param  string $message Message to echo
+	 * @return null
+	 */
 	public function stdout($message) 
 	{
 		if ( $this->interactive )
-			echo "$message\n";
+			sprintf("%s", $message);
 	}
 
+	/**
+	 * Echoes an error into the server if the interactive property is set to true, can be overriden to handle local server error information printing
+	 * @param  string $message Error to echo
+	 * @return null
+	 */
 	public function stderr($message) 
 	{
 		if ( $this->interactive )
-			echo "$message\n";
+			sprintf("%s", $message);
 	}
 
+	/**
+	 * Frames a message
+	 * @param  string  	  $message          Message to frame
+	 * @param  userClass  $user             User we'll be sending the framed message to
+	 * @param  string     $messageType      Type of message (continous, text, binary, close, ping, pong)
+	 * @param  boolean    $messageContinues Will the message be continious?
+	 * @return string                       Returns the framed message
+	 */
 	protected function frame($message, $user, $messageType = 'text', $messageContinues = false) 
 	{
 		switch ($messageType) 
@@ -453,6 +621,13 @@ abstract class WebSocketServer
 	}
 
 	//check packet if he have more than one frame and process each frame individually
+	/**
+	 * Splits a packet that contains multiple frames
+	 * @param  integer $length Length of the packet
+	 * @param  string  $packet Packet that we're splitting
+	 * @param  userClass $user Instance of the userClass of the client that's sending the packet
+	 * @return null
+	 */
 	protected function split_packet($length, $packet, $user) 
 	{
 		//add PartialPacket and calculate the new $length
@@ -487,7 +662,7 @@ abstract class WebSocketServer
 					if ( preg_match('//u', $message) ) 
 						$this->process($user, $message);
 					else 
-						$this->stderr("not UTF-8\n");
+						$this->stderr("not UTF-8");
 				}
 			} 
 
@@ -498,6 +673,11 @@ abstract class WebSocketServer
 		}
 	}
 
+	/**
+	 * Calculates the offset of the headers
+	 * @param  array   $headers Header array
+	 * @return integer 		    Offset of the headers
+	 */
 	protected function calcoffset($headers) 
 	{
 		$offset = 2;
@@ -513,6 +693,13 @@ abstract class WebSocketServer
 		return $offset;
 	}
 
+	/**
+	 * Removes the frame of a packet
+	 * @param  string    $message Packet/message that we'll be deframing
+	 * @param  userClass &$user   Reference to the userClass instance of the user that sent the message
+	 * @return mixed			  Returns true if we were able to deframe the packet, if there's a fin header present, we'll return the payload
+	 * @todo                      Close the connection on opcode 8 or unrecognized opcode
+	 */
 	protected function deframe($message, &$user) 
 	{
 		$headers = $this->extractHeaders($message);
@@ -599,6 +786,11 @@ abstract class WebSocketServer
 		return false;
 	}
 
+	/**
+	 * Extracts the header from a packet/message
+	 * @param  array $message  Message that we'll be taking the headers from
+	 * @return array           Array of all the headers the message has
+	 */
 	protected function extractHeaders($message) 
 	{
 		$header = array(
@@ -641,6 +833,12 @@ abstract class WebSocketServer
 		return $header;
 	}
 
+	/**
+	 * Extracts the payload from a message
+	 * @param  string $message Message that we'll be getting the payload from
+	 * @param  array  $headers Headers of the message
+	 * @return string          Message payload
+	 */
 	protected function extractPayload($message, $headers) 
 	{
 		$offset = 2;
@@ -656,6 +854,12 @@ abstract class WebSocketServer
 		return substr($message,$offset);
 	}
 
+	/**
+	 * Applies a mask to a payload
+	 * @param  array  $headers Headers that contain the mask
+	 * @param  string $payload Payload we'll be masking
+	 * @return string          Returns the original payload if the headers do not have a mask, if else returns the masked string
+	 */
 	protected function applyMask($headers, $payload) 
 	{
 		$effectiveMask = "";
@@ -677,6 +881,14 @@ abstract class WebSocketServer
 
 		return $effectiveMask ^ $payload;
 	}
+
+	/**
+	 * Checks for RSVBits, override this method if you are using an extension where the RSV bits are used.
+	 * @param  array     $headers  Header array
+	 * @param  userClass $user     Instance of the userClass we'll be checking
+	 * @return boolean			   Returns true if the RSVBits were valid, if else, returns false
+	 * @todo 					   Fail user connection on successful checking
+	 */
 	protected function checkRSVBits($headers, $user) 
 	{ // override this method if you are using an extension where the RSV bits are used.
 		if ( ord($headers['rsv1']) + ord($headers['rsv2']) + ord($headers['rsv3']) > 0 ) 
@@ -688,6 +900,11 @@ abstract class WebSocketServer
 		return false;
 	}
 
+	/**
+	 * Converts a string to HEX
+	 * @param  string $str String to convert
+	 * @return string      Returns the converted string
+	 */
 	protected function strtohex($str) 
 	{
 		$strout = "";
@@ -713,6 +930,11 @@ abstract class WebSocketServer
 		return $strout . "\n";
 	}
 
+	/**
+	 * Prints the headers
+	 * @param  array $headers  Headers to print
+	 * @return null            Prints the headers
+	 */
 	protected function printHeaders($headers) 
 	{
 		echo "Array\n(\n";
