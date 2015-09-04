@@ -2,6 +2,8 @@
 namespace Phpws\Interfaces;
 
 interface WebsocketUser {
-	public function getTlsStatus();
-	public function getNetHandle();
+	public function getTLSStatus();
+	public function getTLSTunnel();
+	public function getConnectionId();
+	public function getSocket();
 }

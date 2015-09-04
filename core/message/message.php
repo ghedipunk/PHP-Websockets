@@ -61,18 +61,16 @@ class Message implements \Phpws\Interfaces\Message {
     foreach ($bytes as $chr) {
       $headers .= chr($chr);
     }
-    return $headers . $this->message;
+    $this->framedMessage = $headers . $this->message;
+    return true;
   }
 
-  protected function tls_frame($recipient) {
-    if ($this->isSent) {
-      // Can't frame a message if it has already been sent.
-    }
-
+  protected function tls_frame(\Phpws\Interfaces\WebsocketUser $recipient) {
     if (empty($this->framedMessage)) {
       $this->frame();
     }
 
+    $tlsParams = $recipient->getTLSTunnel();
 
   }
 
