@@ -15,6 +15,7 @@ abstract class WebSocketServer {
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
   protected $headerSecWebSocketExtensionsRequired = false;
+  protected $sendBuffer                           = array();
 
   function __construct($addr, $port, $bufferLength = 2048) {
     $this->maxBufferSize = $bufferLength;
@@ -36,11 +37,34 @@ abstract class WebSocketServer {
     // Override to handle a connecting user, after the instance of the User is created, but before
     // the handshake has completed.
   }
+
+  protected function _send($socket, $message) {
+    $sendBufferItem = array(
+      'socket' => $socket,
+      'message' => $message,
+      'length' => strlen($message),
+      'sentBytes' => 0,
+    );
+
+    $this->sendBuffer[] = $sendBufferItem;
+    $this->_rawSend();
+  }
+
+  protected function _rawSend() {
+    foreach ($this->sendBuffer as $key => $item)
+    {
+      $sentBytes = socket_write($item['socket'], substr($item['message'], $item['sentBytes']), $item['length'] - $item['sentBytes']);
+      $item['sentBytes'] += $sentBytes;
+      if ($item['length'] <= $item['sentBytes']) {
+        unset($this->sendBuffer[$key]);
+      }
+    }
+  }
   
   protected function send($user, $message) {
     if ($user->handshake) {
       $message = $this->frame($message,$user);
-      $result = @socket_write($user->socket, $message, strlen($message));
+      $result = $this->_send($user->socket, $message);
     }
     else {
       // User has not yet performed their handshake.  Store for sending later.
@@ -56,6 +80,7 @@ abstract class WebSocketServer {
 
   protected function _tick() {
     // Core maintenance processes, such as retrying failed messages.
+    $this->_rawSend();
     foreach ($this->heldMessages as $key => $hm) {
       $found = false;
       foreach ($this->users as $currentUser) {
@@ -175,7 +200,7 @@ abstract class WebSocketServer {
       }
       else {
         $message = $this->frame('', $disconnectedUser, 'close');
-        @socket_write($disconnectedUser->socket, $message, strlen($message));
+        $this->_send($disconnectedUser->socket, $message);
       }
     }
   }
@@ -232,7 +257,7 @@ abstract class WebSocketServer {
     // Done verifying the _required_ headers and optionally required headers.
 
     if (isset($handshakeResponse)) {
-      socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+      $this->_send($user->socket, $handshakeResponse);
       $this->disconnect($user->socket);
       return;
     }
@@ -252,7 +277,7 @@ abstract class WebSocketServer {
     $extensions = (isset($headers['sec-websocket-extensions'])) ? $this->processExtensions($headers['sec-websocket-extensions']) : "";
 
     $handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n";
-    socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+    $this->_send($user->socket, $handshakeResponse);
     $this->connected($user);
   }
 
@@ -463,8 +488,8 @@ abstract class WebSocketServer {
     $payload = $user->partialMessage . $this->extractPayload($message,$headers);
 
     if ($pongReply) {
-      $reply = $this->frame($payload,$user,'pong');
-      socket_write($user->socket,$reply,strlen($reply));
+      $reply = $this->frame($payload, $user, 'pong');
+      $this->_send($user->socket, $reply);
       return false;
     }
     if (extension_loaded('mbstring')) {
