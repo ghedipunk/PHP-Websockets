@@ -12,7 +12,7 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 		$message = new \Phpws\Core\Message();
 		$user = new \Phpws\Core\WebsocketUser('Not A Real Id', 'Not A Real Socket');
 
-		$message->addUser($user);
+		$message->addRecipient($user);
 		$recipients = $message->getRecipients();
 		assertContains($user, $recipients);
 	}
