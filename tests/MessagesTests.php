@@ -14,6 +14,6 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 
 		$message->addRecipient($user);
 		$recipients = $message->getRecipients();
-		assertContains($user, $recipients);
+		$this->assertContains($user, $recipients);
 	}
 }
