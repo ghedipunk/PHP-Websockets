@@ -22,4 +22,14 @@ class WebSocketUser implements \Phpws\Interfaces\WebsocketUser {
     $this->id = $id;
     $this->socket = $socket;
   }
+
+  public function getTlsStatus()
+  {
+    return false;
+  }
+  
+  public function getNetHandle()
+  {
+    return $id;
+  }
 }
