@@ -1,7 +1,7 @@
 <?php
 namespace Phpws\Core;
 
-class WebSocketUser {
+class WebSocketUser implements \Phpws\Interfaces\WebsocketUser {
 
   public $socket;
   public $id;
