@@ -21,8 +21,11 @@ class Message implements \Phpws\Interfaces\Message {
   private $messageIsComplete = true;
 
   function __construct($text = '', $recipients = array()) {
-    if ($recipients instanceof \Phpws\Interfaces\WebsocketUser) {
-      $this->recipients[] = $recipients;
+    $this->recipients = array();
+    foreach ($recipients as $recipient) {
+      if ($recipient instanceof \Phpws\Interfaces\WebsocketUser) {
+        $this->recipients[] = $recipient;
+      }
     }
   }
 
