@@ -1,4 +1,5 @@
 <?php
+namespace Phpws\Core;
 
 class WebSocketUser implements Phpws\Interfaces\WebsocketUser {
 
