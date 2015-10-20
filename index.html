@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Php-websockets by ghedipunk</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1 class="header">Php-websockets</h1>
+        <p class="header">A Websockets server written in PHP.</p>
+
+        <ul>
+          <li class="download"><a class="buttons" href="https://github.com/ghedipunk/PHP-Websockets/zipball/master">Download ZIP</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/ghedipunk/PHP-Websockets/tarball/master">Download TAR</a></li>
+          <li><a class="buttons github" href="https://github.com/ghedipunk/PHP-Websockets">View On GitHub</a></li>
+        </ul>
+
+        <p class="header">This project is maintained by <a class="header name" href="https://github.com/ghedipunk">ghedipunk</a></p>
+
+
+      </header>
+      <section>
+        <h1>
+<a id="php-websockets" class="anchor" href="#php-websockets" aria-hidden="true"><span class="octicon octicon-link"></span></a>PHP WebSockets</h1>
+
+<h2>
+<a id="a-websockets-server-written-in-php" class="anchor" href="#a-websockets-server-written-in-php" aria-hidden="true"><span class="octicon octicon-link"></span></a>A WebSockets server written in PHP.</h2>
+
+<p>This project provides the functionality of an RFC-6455 (or Version 13) WebSockets server.  It can be used as a stand-alone server, or as the back-end of a normal HTTP server that is WebSockets aware.</p>
+
+<p>In order to use PHP WebSockets, you must have the ability to arbitrarilly execute scripts, which almost always means having shell access to your server, at a minimum.  It is strongly encouraged that you have the ability to configure your machine's HTTP server.  It is strongly discouraged to allow arbitrary execution of scripts from a web interface, as this is a major security hole.</p>
+
+<p>To use:</p>
+
+<p>Do not place the files in your web server's document root -- they are not intended to be ran through a web browser or otherwise directly accessible to the world.  They are intended to be ran through PHP's Command Line Interface (CLI).</p>
+
+<p>The main class, <code>WebSocketServer</code>, is intended to be inherited by your class, and the methods <code>connected</code>, <code>closed</code>, and <code>process</code> should be overridden.  In fact, they are abstract, so they <em>must</em> be overridden.</p>
+
+<p>Future plans include allowing child processes forked from the controlling daemon to support broadcasts and to relay data from one socket in a child process to another socket in a separate child proccess.</p>
+
+<h2>
+<a id="browser-support" class="anchor" href="#browser-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Browser Support</h2>
+
+<p>Broswer Name        Earliest Version</p>
+
+<p>Google Chrome       16</p>
+
+<p>Mozilla Firefox     11</p>
+
+<p>Internet Explorer   10</p>
+
+<p>Safari              6</p>
+
+<p>Opera               12.10</p>
+
+<p>Android Browser     4.4</p>
+
+<p>Note: Current browser support is available at <a href="http://en.wikipedia.org/wiki/WebSocket#Browser_support">http://en.wikipedia.org/wiki/WebSocket#Browser_support</a> under the RFC-6455 row.</p>
+
+<h2>
+<a id="for-support" class="anchor" href="#for-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>For Support</h2>
+
+<p>Right now, the only support available is in the Github Issues ( <a href="https://github.com/ghedipunk/PHP-Websockets/issues">https://github.com/ghedipunk/PHP-Websockets/issues</a> ).  Once I reach my $250/mo Patreon reward level, I'll be able to maintain support forums for non-core code issues.  If you'd like to support the project, and bring these forums closer to reality, you can do so at <a href="https://www.patreon.com/ghedipunk">https://www.patreon.com/ghedipunk</a> .</p>
+      </section>
+      <footer>
+        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+		
+  </body>
+</html>
