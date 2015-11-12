@@ -399,8 +399,8 @@ abstract class WebSocketServer {
         if ($user->hasSentClose) {
           $this->disconnect($user->socket);
         } else {
-          if (preg_match('//u', $message)) {
-            //$this->stdout("Is UTF-8\n".$message); 
+          if ((preg_match('//u', $message)) || ($headers['opcode']==2)) {
+            //$this->stdout("Text msg encoded UTF-8 or Binary msg\n".$message); 
             $this->process($user, $message);
           } else {
             $this->stderr("not UTF-8\n");
