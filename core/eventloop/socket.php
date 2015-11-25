@@ -1,5 +1,5 @@
 <?php 
-namespace Phpws\Core\Eventloop;
+namespace Gpws\Eventloop;
 
 // Default method 
 trait Socket {

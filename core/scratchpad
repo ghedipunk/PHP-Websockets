@@ -1,0 +1,38 @@
+protected function frame() {
+    if ($this->isSent) {
+      return false;
+    }
+
+    $bytes[0] = $this->messageType;
+
+    if ($this->messageIsComplete) {
+      $bytes[0] += 128;
+    }
+
+    $length = strlen($this->message);
+    if ($length < 126) {
+      $bytes[1] = $length;
+    }
+    elseif ($length <= 65536) {
+      $bytes[1] = 126;
+      $bytes[2] = ( $length >> 8 ) & 255;
+      $bytes[3] = ( $length      ) & 255;
+    }
+    else {
+      $bytes[1] = 127;
+      $bytes[2] = ( $length >> 56 ) & 255;
+      $bytes[3] = ( $length >> 48 ) & 255;
+      $bytes[4] = ( $length >> 40 ) & 255;
+      $bytes[5] = ( $length >> 32 ) & 255;
+      $bytes[6] = ( $length >> 24 ) & 255;
+      $bytes[7] = ( $length >> 16 ) & 255;
+      $bytes[8] = ( $length >>  8 ) & 255;
+      $bytes[9] = ( $length       ) & 255;
+    }
+    $headers = "";
+    foreach ($bytes as $chr) {
+      $headers .= chr($chr);
+    }
+    $this->framedMessage = $headers . $this->message;
+    return true;
+  }

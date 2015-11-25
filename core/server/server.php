@@ -1,12 +1,11 @@
 <?php
-<<<<<<< HEAD:core/websockets.php
 /**
  * Contains the core Websockets server class
  */
 
-namespace Phpws/Core;
+namespace Gwps/Core;
 
-class Websockets {
+class Router {
 
     // Configuration Start 
     private $debug_mode                 = false; // debug tool I left in code. verbose mode

@@ -1,9 +1,6 @@
 <?php
-namespace Phpws\Interfaces;
+namespace Gpws\Interfaces;
 
 interface WebsocketUser {
-	public function getTLSStatus();
-	public function getTLSTunnel();
-	public function getConnectionId();
-	public function getSocket();
+	public function getConnection();
 }

@@ -7,7 +7,7 @@ function phpws_autoload($class) {
 
 	$classParts = explode('\\', strtolower($class));
 
-	$root = array_unshift($classParts);
+	$root = array_shift($classParts);
 	// If it's not in our namespace, don't try to autoload it.
 	if ($root !== 'phpws') {
 		return;

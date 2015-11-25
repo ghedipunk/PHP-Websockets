@@ -3,7 +3,7 @@
  * Contains core autoloading system
  */
 
-namespace Phpws\Core;
+namespace Gpws\Core;
 
 /**
  * Autoload class
@@ -16,15 +16,16 @@ class Autoload
     {
         $classParts = explode('\\', $class);
         $rootNamespace = array_shift($classParts);
-        if (strtolower($rootNamespace) == 'phpws')
+        if (strtolower($rootNamespace) == 'gpws')
         {
             foreach ($classParts as &$part)
             {
                 $part = strtolower($part);
             }
-        
-            $path = implode('/', $classParts) . '.php'
-            include_once($path);
+
+            /** @var string $path */
+            $path = implode('/', $classParts) . '.php';
+            include_once('core/' . $path);
         }
     }
 }

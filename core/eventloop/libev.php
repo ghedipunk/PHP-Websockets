@@ -1,5 +1,5 @@
 <?php 
-namespace Phpws\Core\Eventloop;
+namespace Gpws\Eventloop;
 
 //need Ev library http://php.net/manual/fr/book.ev.php
 trait Libev {

@@ -1,12 +1,10 @@
 <?php
-namespace Phpws\Interfaces;
+namespace Gpws\Interfaces;
 
 interface Message {
-	public function addRecipient(\Phpws\Interfaces\WebsocketUser $recipient);
+	public function addRecipient(\Gwps\Interfaces\WebsocketUser $recipient);
 	public function addRecipients(array $recipients);
-	public function removeRecipient(\Phpws\Interfaces\WebsocketUser $recipient);
+	public function removeRecipient(\Gpws\Interfaces\WebsocketUser $recipient);
 	public function setMessage($message);
-	public function send();
 	public function getRecipients();
-	public function getSendStatus();
 }
