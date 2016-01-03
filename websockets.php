@@ -340,7 +340,7 @@ abstract class WebSocketServer {
     if ($length < 126) {
       $b2 = $length;
     } 
-    elseif ($length <= 65536) {
+    elseif ($length < 65536) {
       $b2 = 126;
       $hexLength = dechex($length);
       //$this->stdout("Hex Length: $hexLength");
