@@ -110,6 +110,7 @@ abstract class WebSocketServer {
    * @return void
    */
   protected function tick() {
+    $this->stdout('tock');
     // Override this for any process that should happen periodically.  Will happen at least once
     // per second, but possibly more often.
   }
@@ -146,17 +147,21 @@ abstract class WebSocketServer {
     while(true) {
 
       $read = $this->sockets;
+      $read[] = $this->master;
       $write = $except = null;
       $this->_tick();
       $this->tick();
 
-      if ($newConnection = @stream_socket_accept($this->master, 0)) {
-        $this->connect($newConnection);
-        $this->stdout("Client connected. " . $newConnection);
-      }
-
-      @stream_select($read,$write,$except,1);
+      @stream_select($read, $write, $except, 1);
       foreach ($read as $socket) {
+        if ($socket == $this->master) {
+          if ($newConnection = @stream_socket_accept($this->master, 0)) {
+            $this->connect($newConnection);
+            $this->stdout("Client connected. " . $newConnection);
+          }
+          break; // Breaks out of foreach.
+        }
+
         $buffer = fread($socket, $this->maxBufferSize);
         $numBytes = count($buffer);
         if ($numBytes == 0) {
