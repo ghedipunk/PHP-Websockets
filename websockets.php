@@ -110,7 +110,6 @@ abstract class WebSocketServer {
    * @return void
    */
   protected function tick() {
-    $this->stdout('tock');
     // Override this for any process that should happen periodically.  Will happen at least once
     // per second, but possibly more often.
   }
