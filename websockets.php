@@ -150,7 +150,7 @@ abstract class WebSocketServer {
       $this->_tick();
       $this->tick();
 
-      if ($newConnection = stream_socket_accept($this->master, 0)) {
+      if ($newConnection = @stream_socket_accept($this->master, 0)) {
         $this->connect($newConnection);
         $this->stdout("Client connected. " . $newConnection);
       }
