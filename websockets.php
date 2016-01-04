@@ -41,11 +41,13 @@ abstract class WebSocketServer {
   protected function setupConnection() {
     $errno = $errstr = null;
 
-    $this->master = stream_socket_server('tcp://' . $this->listenAddress . ':' . $this->listenPort, $errno, $errstr);
+    $this->master = stream_socket_server(
+        'tcp://' . $this->listenAddress . ':' . $this->listenPort,
+        $errno,
+        $errstr,
+        STREAM_SERVER_BIND | STREAM_SERVER_LISTEN
+    );
     // TODO: (long before merge to master) error checking
-
-
-    $this->sockets['master'] = $this->master;
   }
 
   /**
@@ -66,10 +68,14 @@ abstract class WebSocketServer {
 
     $context = stream_context_create($options);
 
-    $this->masterTls = stream_socket_server('ssl://' . $this->listenAddress . ':' . $this->listenPort, $errno, $errstr, $context);
+    $this->masterTls = stream_socket_server(
+        'tls://' . $this->listenAddress . ':' . $this->listenPort,
+        $errno,
+        $errstr,
+        STREAM_SERVER_BIND | STREAM_SERVER_LISTEN,
+        $context
+    );
     // TODO: error checking
-
-    $this->sockets['master'] = $this->master;
   }
 
   /**
@@ -91,7 +97,7 @@ abstract class WebSocketServer {
   protected function send($user, $message) {
     if ($user->handshake) {
       $message = $this->frame($message,$user);
-      $result = @socket_write($user->socket, $message, strlen($message));
+      $result = @fwrite($user->socket, $message, strlen($message));
     }
     else {
       // User has not yet performed their handshake.  Store for sending later.
@@ -138,69 +144,36 @@ abstract class WebSocketServer {
    */
   public function run() {
     while(true) {
-      if (empty($this->sockets)) {
-        $this->sockets['master'] = $this->master;
-      }
+
       $read = $this->sockets;
       $write = $except = null;
       $this->_tick();
       $this->tick();
-      @socket_select($read,$write,$except,1);
-      foreach ($read as $socket) {
-        if ($socket == $this->master) {
-          $client = socket_accept($socket);
-          if ($client < 0) {
-            $this->stderr("Failed: socket_accept()");
-            continue;
-          } 
-          else {
-            $this->connect($client);
-            $this->stdout("Client connected. " . $client);
-          }
-        } 
-        else {
-          $numBytes = @socket_recv($socket, $buffer, $this->maxBufferSize, 0); 
-          if ($numBytes === false) {
-            $sockErrNo = socket_last_error($socket);
-            switch ($sockErrNo)
-            {
-              case 102: // ENETRESET    -- Network dropped connection because of reset
-              case 103: // ECONNABORTED -- Software caused connection abort
-              case 104: // ECONNRESET   -- Connection reset by peer
-              case 108: // ESHUTDOWN    -- Cannot send after transport endpoint shutdown -- probably more of an error on our part, if we're trying to write after the socket is closed.  Probably not a critical error, though.
-              case 110: // ETIMEDOUT    -- Connection timed out
-              case 111: // ECONNREFUSED -- Connection refused -- We shouldn't see this one, since we're listening... Still not a critical error.
-              case 112: // EHOSTDOWN    -- Host is down -- Again, we shouldn't see this, and again, not critical because it's just one connection and we still want to listen to/for others.
-              case 113: // EHOSTUNREACH -- No route to host
-              case 121: // EREMOTEIO    -- Rempte I/O error -- Their hard drive just blew up.
-              case 125: // ECANCELED    -- Operation canceled
-                
-                $this->stderr("Unusual disconnect on socket " . $socket);
-                $this->disconnect($socket, true, $sockErrNo); // disconnect before clearing error, in case someone with their own implementation wants to check for error conditions on the socket.
-                break;
-              default:
 
-                $this->stderr('Socket error: ' . socket_strerror($sockErrNo));
+      if ($newConnection = stream_socket_accept($this->master, 0)) {
+        $this->connect($newConnection);
+        $this->stdout("Client connected. " . $newConnection);
+      }
+
+      @stream_select($read,$write,$except,1);
+      foreach ($read as $socket) {
+        $buffer = fread($socket, $this->maxBufferSize);
+        $numBytes = count($buffer);
+        if ($numBytes == 0) {
+          $this->disconnect($socket);
+          $this->stderr("Client disconnected. TCP connection lost: " . $socket);
+        }
+        else {
+          $user = $this->getUserBySocket($socket);
+          if (!$user->handshake) {
+            $tmp = str_replace("\r", '', $buffer);
+            if (strpos($tmp, "\n\n") === false) {
+              continue; // If the client has not finished sending the header, then wait before sending our upgrade response.
             }
-            
-          }
-          elseif ($numBytes == 0) {
-            $this->disconnect($socket);
-            $this->stderr("Client disconnected. TCP connection lost: " . $socket);
-          } 
-          else {
-            $user = $this->getUserBySocket($socket);
-            if (!$user->handshake) {
-              $tmp = str_replace("\r", '', $buffer);
-              if (strpos($tmp, "\n\n") === false ) {
-                continue; // If the client has not finished sending the header, then wait before sending our upgrade response.
-              }
-              $this->doHandshake($user,$buffer);
-            } 
-            else {
-              //split packet into frame and send it to deframe
-              $this->split_packet($numBytes,$buffer, $user);
-            }
+            $this->doHandshake($user, $buffer);
+          } else {
+            //split packet into frame and send it to deframe
+            $this->split_packet($numBytes, $buffer, $user);
           }
         }
       }
@@ -234,17 +207,13 @@ abstract class WebSocketServer {
         unset($this->sockets[$disconnectedUser->id]);
       }
       
-      if (!is_null($sockErrNo)) {
-        socket_clear_error($socket);
-      }
-
       if ($triggerClosed) {
         $this->closed($disconnectedUser);
-        socket_close($disconnectedUser->socket);
+        fclose($disconnectedUser->socket);
       }
       else {
         $message = $this->frame('', $disconnectedUser, 'close');
-        @socket_write($disconnectedUser->socket, $message, strlen($message));
+        @fwrite($disconnectedUser->socket, $message, strlen($message));
       }
     }
   }
@@ -307,7 +276,7 @@ abstract class WebSocketServer {
     // Done verifying the _required_ headers and optionally required headers.
 
     if (isset($handshakeResponse)) {
-      socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+      fwrite($user->socket, $handshakeResponse, strlen($handshakeResponse));
       $this->disconnect($user->socket);
       return;
     }
@@ -319,7 +288,7 @@ abstract class WebSocketServer {
 
     $rawToken = "";
     for ($i = 0; $i < 20; $i++) {
-      $rawToken .= chr(hexdec(substr($webSocketKeyHash,$i*2, 2)));
+      $rawToken .= chr(hexdec(substr($webSocketKeyHash, $i*2, 2)));
     }
     $handshakeToken = base64_encode($rawToken) . "\r\n";
 
@@ -327,7 +296,7 @@ abstract class WebSocketServer {
     $extensions = (isset($headers['sec-websocket-extensions'])) ? $this->processExtensions($headers['sec-websocket-extensions']) : "";
 
     $handshakeResponse = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: $handshakeToken$subProtocol$extensions\r\n";
-    socket_write($user->socket,$handshakeResponse,strlen($handshakeResponse));
+    fwrite($user->socket, $handshakeResponse, strlen($handshakeResponse));
     $this->connected($user);
   }
 
@@ -411,7 +380,7 @@ abstract class WebSocketServer {
    */
   public function stdout($message) {
     if ($this->interactive) {
-      echo "$message\n";
+      echo $message . PHP_EOL;
     }
   }
 
@@ -422,7 +391,7 @@ abstract class WebSocketServer {
    */
   public function stderr($message) {
     if ($this->interactive) {
-      echo "$message\n";
+      echo $message . PHP_EOL;
     }
   }
 
@@ -610,7 +579,7 @@ abstract class WebSocketServer {
 
     if ($pongReply) {
       $reply = $this->frame($payload,$user,'pong');
-      socket_write($user->socket,$reply,strlen($reply));
+      fwrite($user->socket, $reply, strlen($reply));
       return false;
     }
 
