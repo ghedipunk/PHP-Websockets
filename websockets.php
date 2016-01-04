@@ -155,7 +155,7 @@ abstract class WebSocketServer {
       @stream_select($read, $write, $except, 1);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
-          if ($newConnection = @stream_socket_accept($this->master, 0)) {
+          if ($newConnection = stream_socket_accept($this->master, 0)) {
             $this->connect($newConnection);
             $this->stdout("Client connected. " . $newConnection);
           }
