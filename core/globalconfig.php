@@ -3,30 +3,30 @@
  * Contains the GlobalConfig class
  */
 
-namespace Phpws\Core;
+namespace Gpws\Core;
 
 /**
  * Global Configuration
  *
- * The class that has a whole mess of static methods that interact with the global configuration.
+ * Yep, it's a singleton!  Kind of.  There's nothing stopping anyone from spinning up multiple instances of this,
+ * each with the same source config file or even separate ones.
  *
  * @property string $configFile The path to the configuration file.
  * @property array $config An array containing key=>value sets of configuration options.
  */
 class GlobalConfig
 {
-
-    public static $configFile;
-    public static $config;
+    private $configFile;
+    private $config;
 
     /**
      * Sets the filename for where the configuration is stored.
      *
      * @param string $filename
      */
-    public static function setConfigFile($filename)
+    public function setConfigFile($filename)
     {
-        self::$configFile = $filename;
+        $this->configFile = $filename;
     }
 
     /**
@@ -36,15 +36,15 @@ class GlobalConfig
      * 
      * @return string|null The value, if set, or null otherwise.
      */
-    public static function getValue($key)
+    public function getValue($key)
     {
-        if (!self::$config && self::$configFile)
+        if (!$this->config && $this->configFile)
         {
-            self::$config = parse_ini_file(self::$configFile);
+            $this->config = parse_ini_file($this->configFile);
         }
-        if (isset(self::$config[$key]))
+        if (isset($this->config[$key]))
         {
-            return self::$config[$key];
+            return $this->config[$key];
         }
         return null;
     }
@@ -52,15 +52,15 @@ class GlobalConfig
     /**
      * Clears out the configuration and, if a filename is currently set, re-populates it from file.
      */
-    public static function resetConfig()
+    public function resetConfig()
     {
-        if (self::$configFile)
+        if ($this->configFile)
         {
-            self::$config = parse_ini_file(self::$filename);
+            $this->config = parse_ini_file($this->configFile);
         }
         else
         {
-            self::$config = null;
+            $this->config = null;
         }
     }
 }
