@@ -16,19 +16,19 @@ html,body {
 <script type="text/javascript">
 var socket;
 
-function init() {
-	var host = "ws://127.0.0.1:9000/echobot"; // SET THIS TO YOUR SERVER
+function doConnect(schema) {
+	var host = "127.0.0.1:9000/echobot"; // SET THIS TO YOUR SERVER
 	try {
-		socket = new WebSocket(host);
-		log('WebSocket - status '+socket.readyState);
+		socket = new WebSocket(schema + host);
+		log('WebSocket - status ' + socket.readyState);
 		socket.onopen    = function(msg) { 
-							   log("Welcome - status "+this.readyState); 
+							   log("Welcome - status " + this.readyState);
 						   };
 		socket.onmessage = function(msg) { 
-							   log("Received: "+msg.data); 
+							   log("Received: " + msg.data);
 						   };
 		socket.onclose   = function(msg) { 
-							   log("Disconnected - status "+this.readyState); 
+							   log("Disconnected - status " + this.readyState);
 						   };
 	}
 	catch(ex){ 
@@ -62,9 +62,14 @@ function quit(){
 	}
 }
 
-function reconnect() {
+function connectInsecure() {
 	quit();
-	init();
+	doConnect('ws://');
+}
+
+function connectSecure() {
+    quit();
+    doConnect('wss://');
 }
 
 // Utilities
@@ -74,12 +79,13 @@ function onkey(event){ if(event.keyCode==13){ send(); } }
 </script>
 
 </head>
-<body onload="init()">
+<body>
 <h3>WebSocket v2.00</h3>
 <div id="log"></div>
 <input id="msg" type="textbox" onkeypress="onkey(event)"/>
 <button onclick="send()">Send</button>
 <button onclick="quit()">Quit</button>
-<button onclick="reconnect()">Reconnect</button>
+<button onclick="connectInsecure()">Connect Non-Secure</button>
+<button onclick="connectSecure()">Connect Secure</button>
 </body>
 </html>
