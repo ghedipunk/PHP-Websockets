@@ -24,8 +24,7 @@ abstract class WebSocketServer {
     $this->listenPort = $port;
 
     $this->setupConnection();
-    // $this->
-    // $this->setupSecureConnection(); // If you want TLS support, redefine this constructor and use this method instead of ::setupConnection().
+    //$this->setupSecureConnection(); // If you want TLS support, redefine this constructor and use this method instead of ::setupConnection().
     $this->stdout("Server started\nListening on: $addr:$port\nMaster socket: ".$this->master);
 
     
@@ -56,25 +55,31 @@ abstract class WebSocketServer {
    *
    * @return void
    */
-  protected function setupSecureConnection($certFile, $certPass) {
+  protected function setupSecureConnection() {
     $errno = $errstr = null;
 
     $options = array(
       'ssl' => array(
-        'local_cert' => $certFile,
-        'passphrase' => $certPass,
+        'peer_name' => 'YOUR SERVER NAME HERE',
+        'verify_peer' => false,
+        'local_cert' => 'cert.pem',
+        'local_pk' => 'pk.key',
       ),
     );
+    // Note: These options should go in a configuration file of some sort.
+    // Another note: You should use the 'passphrase' option, and should have your local cert encrypted with it. (Your local cert file should also include the private key, as it MUST be encrypted as well, for the bare minimum of security.)
+    // For best results, also symmetrically encrypt the configuration file that contains these settings, and prompt for the password/decryption key when starting your server.  Yes, this means it fails closed, but _that's a good thing_ when it comes to security.  If your system fails open, it's not secure, even if you're using industry standard TLS.
 
     $context = stream_context_create($options);
 
-    $this->masterTls = stream_socket_server(
-        'tls://' . $this->listenAddress . ':' . $this->listenPort,
+    $this->master = stream_socket_server(
+        'ssl://' . $this->listenAddress . ':' . $this->listenPort,
         $errno,
         $errstr,
         STREAM_SERVER_BIND | STREAM_SERVER_LISTEN,
         $context
     );
+
     // TODO: error checking
   }
 
@@ -151,7 +156,7 @@ abstract class WebSocketServer {
       $this->_tick();
       $this->tick();
 
-      @stream_select($read, $write, $except, 1);
+      stream_select($read, $write, $except, 1);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
           if ($newConnection = stream_socket_accept($this->master, 0)) {
