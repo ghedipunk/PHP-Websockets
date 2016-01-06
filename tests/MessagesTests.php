@@ -9,8 +9,8 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 {
 	public function testAddRecipient()
 	{
-		$message = new \Phpws\Core\Message();
-		$user = new \Phpws\Core\WebsocketUser('Not A Real Id', 'Not A Real Socket');
+		$message = new \Gpws\Core\Message();
+		$user = new \Gpws\Core\WebsocketUser('Not A Real Id', 'Not A Real Socket');
 
 		$message->addRecipient($user);
 		$recipients = $message->getRecipients();
@@ -19,7 +19,7 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 
 	public function testAddRecipients()
 	{
-		$message = new \Phpws\Core\Message();
+		$message = new \Gpws\Core\Message();
 		$users = array(
 			1 => new \Phpws\Core\WebsocketUser('1', '1'),
 			2 => new \Phpws\Core\WebsocketUser('2', '2'),
@@ -44,8 +44,8 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 
 	public function testRemoveRecipient()
 	{
-		$message = new \Phpws\Core\Message();
-		$user = new \Phpws\Core\WebsocketUser('1', '1');
+		$message = new \Gpws\Core\Message();
+		$user = new \Gpws\Core\WebsocketUser('1', '1');
 
 		$message->addRecipient($user);
 
@@ -60,8 +60,8 @@ class MessagesTest extends PHPUnit_Framework_TestCase
 
 	public function testGetRecipients()
 	{
-		$message = new \Phpws\Core\Message();
-		$user = new \Phpws\Core\WebsocketUser('1', '1');
+		$message = new \Gpws\Core\Message();
+		$user = new \Gpws\Core\WebsocketUser('1', '1');
 
 		$recipients = $message->getRecipients();
 
