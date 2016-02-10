@@ -170,6 +170,7 @@ abstract class WebSocketServer {
       }
 
       if ($triggerClosed) {
+        $this->stdout("Client disconnected. ".$disconnectedUser->socket);
         $this->closed($disconnectedUser);
         socket_close($disconnectedUser->socket);
       }
