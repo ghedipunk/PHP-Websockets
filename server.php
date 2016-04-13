@@ -4,8 +4,9 @@ namespace \Phpws;
 
 require_once(__DIR__ . '/core/bootstrap.php');
 
-class WebsocketServer extends \Phpws\Core\Server\Server {
-    use \Phpws\Core\Eventloop\Socket;
+use Gpws\Eventloop\Socket;
+
+class EchoServer {
 }
 
 $ws = new WebsocketServer('0.0.0.0', 9000);

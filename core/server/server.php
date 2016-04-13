@@ -3,9 +3,9 @@
  * Contains the core Websockets server class
  */
 
-namespace Gwps/Core;
+namespace Gwps/Server;
 
-class Router {
+class Server {
 
     // Configuration Start 
     private $debug_mode                 = false; // debug tool I left in code. verbose mode

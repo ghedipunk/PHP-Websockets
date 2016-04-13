@@ -1,8 +1,14 @@
 <?php 
 namespace Gpws\Eventloop;
 
-// Default method 
-trait Socket {
+use Gpws\Interfaces\EventLoop;
+
+class Socket implements EventLoop {
+
+  public function __construct() {
+
+  }
+
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");
@@ -65,5 +71,7 @@ trait Socket {
     }
     return null;
   }
+
+  private 
 }
 
