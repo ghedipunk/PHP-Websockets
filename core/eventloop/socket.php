@@ -2,13 +2,31 @@
 namespace Gpws\Eventloop;
 
 use Gpws\Interfaces\EventLoop;
+use Gpws\Interfaces\WebsocketUser;
 
 class Socket implements EventLoop {
 
-  public function __construct() {
+  public function __construct($cli) {
+    $this->memUsage = 0;
 
+    if(!($cli instanceof \Gpws\Interfaces\Cli)) {
+      throw new \InvalidArgumentException('Constructor of \\Gpws\\Eventloop\\Socket expects the first argument to implement \\Gpws\\Interfaces\\Cli');
+    }
+    $this->cli = $cli;
+
+    $this->read = array();
   }
 
+  public function run() {
+    $this->memUsage = memory_get_usage();
+    $this->cli->stdout("Running with select() method default");
+
+    while (true) {
+
+    }
+  }
+
+  /*
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");
@@ -52,18 +70,17 @@ class Socket implements EventLoop {
       }
     }
   }
+  */
 
-  protected function addWriteWatchers(&$user,$open) {
-    if ($open) {
-      $this->writeWatchers[$user->id]=$user->socket;
+  protected function addWriteWatcher(&$user) {
+    if (!($user instanceof WebsocketUser)) {
+      throw new \InvalidArgumentException('User passed to Socket::addWriteWatcher must implement \\Gpws\\Interfaces\WebsocketUser');
     }
-    else {
-      $this->writeWatchers[$user->id]=null;
-      unset($this->writeWatchers[$user->id]);   
-    }
+    $this->write[$user->getId()]=$user->getConnection();
+
   }
 
-  protected function getUserBySocket($socket) {
+  protected function getUserByConnection($Connection) {
     foreach ($this->users as $user) {
       if ($user->socket == $socket) {
         return $user;
@@ -72,6 +89,22 @@ class Socket implements EventLoop {
     return null;
   }
 
-  private 
+  /** @var int Amount of memory used */
+  protected $memUsage;
+
+  /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
+  protected $cli;
+
+  /** @var array */
+  protected $read;
+
+  /** @var array */
+  protected $write;
+
+  /** @var array */
+  protected $except;
+
+  /** @var  */
+  protected $users;
 }
 
