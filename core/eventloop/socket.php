@@ -19,10 +19,17 @@ class Socket implements EventLoop {
 
   public function run() {
     $this->memUsage = memory_get_usage();
-    $this->cli->stdout("Running with select() method default");
+    $this->cli->stdout("Running with Socket event loop");
 
     while (true) {
+      $read = array($this->master);
+      foreach ($this->users as $user) {
+        $read[] = $user->getConnection();
+      }
+      $write = null;
+      $except = null;
 
+      socket_select($read, $write, $except, 1);
     }
   }
 
@@ -35,18 +42,10 @@ class Socket implements EventLoop {
         $this->readers['m'] = $this->master;
       }
       $read = $this->readers;
-      $write = $this->writers;
+      $write = null;
       $except = null;
       socket_select($read,$write,$except,null);
-      //outgoing data -- sending buffered data to client
-      if ($write) {
-        foreach ($write as $socket) {
-          $start=$this->getrps();
-            $user = $this->getUserBySocket($socket);
-            $this->ws_write($user);
-          $this->getrps($start);
-        }
-      }
+
       //incoming data
       foreach ($read as $socket) {
         if ($socket == $this->master) {
@@ -72,39 +71,31 @@ class Socket implements EventLoop {
   }
   */
 
-  protected function addWriteWatcher(&$user) {
-    if (!($user instanceof WebsocketUser)) {
-      throw new \InvalidArgumentException('User passed to Socket::addWriteWatcher must implement \\Gpws\\Interfaces\WebsocketUser');
-    }
-    $this->write[$user->getId()]=$user->getConnection();
-
-  }
-
   protected function getUserByConnection($Connection) {
     foreach ($this->users as $user) {
-      if ($user->socket == $socket) {
+      if ($user->getConnection() == $Connection) {
         return $user;
       }
     }
     return null;
   }
 
+  protected function getMessageType($message) {
+
+  }
+
   /** @var int Amount of memory used */
   protected $memUsage;
+
+  /** @var \Gpws\Interfaces\WebsocketUser[] */
+  protected $users;
+
+  /** @var resource */
+  protected $master;
 
   /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
   protected $cli;
 
-  /** @var array */
-  protected $read;
 
-  /** @var array */
-  protected $write;
-
-  /** @var array */
-  protected $except;
-
-  /** @var  */
-  protected $users;
 }
 
