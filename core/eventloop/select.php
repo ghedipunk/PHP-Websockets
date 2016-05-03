@@ -4,7 +4,7 @@ namespace Gpws\Eventloop;
 use Gpws\Interfaces\EventLoop;
 use Gpws\Interfaces\WebsocketUser;
 
-class Socket implements EventLoop {
+class Select implements EventLoop {
 
   public function __construct($cli) {
     $this->memUsage = 0;
@@ -34,6 +34,11 @@ class Socket implements EventLoop {
   }
 
   /*
+  public function run() {
+
+  }
+
+  /**
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");
@@ -96,6 +101,6 @@ class Socket implements EventLoop {
   /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
   protected $cli;
 
-
+  protected $connections;
 }
 

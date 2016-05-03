@@ -1,7 +1,7 @@
 <?php 
 namespace Gpws\Eventloop;
 
-//need Ev library http://php.net/manual/fr/book.ev.php
+//need Ev library http://php.net/manual/book.ev.php
 trait Libev {
   final public function run() {
     $this->mem = memory_get_usage();

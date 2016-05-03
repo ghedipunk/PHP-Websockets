@@ -5,6 +5,41 @@
 
 namespace Gwps\Server;
 
+
+/*
+Discussion:
+How to change this...  What do we want to do here?
+
+Server class should be the base...  the most common entry point for users implementing the server.
+
+So, then, what does it _do_?
+
+
+$server = new \Gpws\Server\Server('0.0.0.0', '8080'); // 0.0.0.0:8080?  hmmm...
+$myApplication = new MyApplication();  // implements \Gpws\Interfaces\Application
+$server->assignApplication($myApplication, 'myPath'); // accepts at /myPath.  Case sensitive.  Can have wildcards.
+$server->run();
+
+Seems easy enough...
+
+So what will the server do?
+
+Create a router
+Add routes
+On ->run(), create an event loop, add router.
+Pass control to event loop
+
+In event loop,
+Handle new connections -- send to handshake, build a user object, send to router.
+Handle packets -- collect into a message. Send finished messages to a router.
+Handle closing connections -- Notify router.
+*/
+
+/**
+ * Class Server
+ *
+ * @package Gwps\Server
+ */
 class Server {
 
     // Configuration Start 
@@ -12,7 +47,7 @@ class Server {
     private $max_request_handshake_size     = 1024; // chrome : ~503B firefox : ~530B IE 11 : ~297B 
     // There is no way to use http status code to send some application error to client we MUST open the connection first
     private $max_client                     = 100;  // 1024 is the max with select() keep space for rejecting socket I suggest keeping 24
-    private $error_maxclien             = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client. 
+    private $error_maxclient             = "WS SERVER reach it maximum limit. Please try again later"; // Set the error message sent to client.
     private $headerOriginRequired                 = false;
     private $headerProtocolRequired               = false;
     private $willSupportExtensions                = false;  // Turn it to true if you support any extensions
