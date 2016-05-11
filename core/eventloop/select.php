@@ -37,12 +37,8 @@ class Select implements EventLoop {
         }
     }
 
+
   /*
-  public function run() {
-
-  }
-
-  /**
   public function run() {
     $this->mem = memory_get_usage();
     $this->stdout("RUNNING with select() method default");
@@ -80,43 +76,43 @@ class Select implements EventLoop {
   }
   */
 
-  protected function acceptConnection($socket) {
+    protected function acceptConnection($socket) {
 
-  }
-
-  protected function acceptMessage($socket) {
-
-  }
-
-  protected function getUserByConnection($Connection) {
-    foreach ($this->users as $user) {
-      if ($user->getConnection() == $Connection) {
-        return $user;
-      }
     }
-    return null;
-  }
 
-  protected function getMessageType($message) {
+    protected function acceptMessage($socket) {
 
-  }
+    }
 
-  /** @var int Amount of memory used */
-  protected $memUsage;
+    protected function getUserByConnection($Connection) {
+        foreach ($this->users as $user) {
+            if ($user->getConnection() == $Connection) {
+                return $user;
+            }
+        }
+        return null;
+    }
 
-  /** @var \Gpws\Interfaces\WebsocketUser[] */
-  protected $users;
+    protected function getMessageType($message) {
 
-  /** @var resource */
-  protected $master;
+    }
 
-  /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
-  protected $cli;
+    /** @var int Amount of memory used */
+    protected $memUsage;
 
-  /** @var resource[] */
-  protected $connections;
+    /** @var \Gpws\Interfaces\WebsocketUser[] */
+    protected $users;
+
+    /** @var resource */
+    protected $master;
+
+    /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
+    protected $cli;
+
+    /** @var resource[] */
+    protected $connections;
 
 
-  protected $deframer;
+    protected $deframer;
 }
 
