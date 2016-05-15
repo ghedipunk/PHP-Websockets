@@ -7,13 +7,14 @@ use Gpws\Interfaces\ConnectionFactory;
 
 class Select implements EventLoop {
 
-    public function __construct(Cli $cli, ConnectionFactory $userFactory) {
+    public function __construct(Cli $cli, ConnectionFactory $connectionFactory) {
         $this->memUsage = 0;
 
         $this->cli = $cli;
-        $this->userFactory = $userFactory;
+        $this->connectionFactory = $connectionFactory;
 
         $this->connections = array();
+        $this->resources = array();
     }
 
     public function run() {
@@ -22,18 +23,18 @@ class Select implements EventLoop {
 
         while (true) {
             $read = array($this->master);
-            foreach ($this->users as $user) {
-                $read[] = $user->getResource();
+            foreach ($this->connections as $connection) {
+                $read[] = $connection->getResource();
             }
             $write = null;
             $except = null;
 
             socket_select($read, $write, $except, 1);
-            foreach ($read as $activeSocket) {
-                if ($activeSocket == $this->master) {
-                    $this->acceptConnection($activeSocket);
+            foreach ($read as $activeResource) {
+                if ($activeResource == $this->master) {
+                    $this->acceptConnection();
                 } else {
-                    $this->acceptMessage($activeSocket);
+                    $this->acceptMessage($activeResource);
                 }
             }
         }
@@ -78,18 +79,23 @@ class Select implements EventLoop {
   }
   */
 
-    protected function acceptConnection($socket) {
+    protected function acceptConnection() {
+
+        $newResource = socket_accept($this->master);
+        $connection = $this->connectionFactory->createConnection($newResource);
+        $this->resources[] = $newResource;
+        $this->connections[] = $connection;
 
     }
 
-    protected function acceptMessage($socket) {
+    protected function acceptMessage($resrouce) {
 
     }
 
-    protected function getUserByConnection($Connection) {
-        foreach ($this->users as $user) {
-            if ($user->getResource() == $Connection) {
-                return $user;
+    protected function getConnectionByResource($resource) {
+        foreach ($this->connections as $connection) {
+            if ($connection->getResource() == $resource) {
+                return $connection;
             }
         }
         return null;
@@ -103,7 +109,7 @@ class Select implements EventLoop {
     protected $memUsage;
 
     /** @var \Gpws\Interfaces\WebsocketConnection[] */
-    protected $users;
+    protected $connections;
 
     /** @var resource */
     protected $master;
@@ -112,9 +118,9 @@ class Select implements EventLoop {
     protected $cli;
 
     /** @var resource[] */
-    protected $connections;
+    protected $resources;
 
     /** @var ConnectionFactory */
-    protected $userFactory;
+    protected $connectionFactory;
 }
 
