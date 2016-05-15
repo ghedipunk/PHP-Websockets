@@ -3,13 +3,15 @@ namespace Gpws\Eventloop;
 
 use Gpws\Interfaces\Cli;
 use Gpws\Interfaces\EventLoop;
+use Gpws\Interfaces\UserFactory;
 
 class Select implements EventLoop {
 
-    public function __construct(Cli $cli, $deframer) {
+    public function __construct(Cli $cli, UserFactory $userFactory) {
         $this->memUsage = 0;
+        
         $this->cli = $cli;
-        $this->deframer = $deframer;
+        $this->userFactory = $userFactory;
 
         $this->connections = array();
     }
@@ -112,7 +114,7 @@ class Select implements EventLoop {
     /** @var resource[] */
     protected $connections;
 
-
-    protected $deframer;
+    /** @var UserFactory */
+    protected $userFactory;
 }
 
