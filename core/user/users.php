@@ -1,7 +1,7 @@
 <?php
 namespace Gpws\Core;
 
-class WebSocketUser implements \Gpws\Interfaces\WebsocketUser {
+class WebSocketConnection implements \Gpws\Interfaces\WebsocketConnection {
 
   const STATE_CONNECTING = 0;
   const STATE_CONNECTED = 1;

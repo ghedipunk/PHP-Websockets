@@ -7,7 +7,7 @@ class Message implements \Gpws\Interfaces\Message {
     private $message;
     private $messageType = self::MESSAGE_TYPE_TEXT;
 
-    public function addRecipient(\Gpws\Interfaces\WebsocketUser $recipient) {
+    public function addRecipient(\Gpws\Interfaces\WebsocketConnection $recipient) {
         if (!in_array($recipient, $this->recipients)) {
             $this->recipients[] = $recipient;
         }
@@ -15,7 +15,7 @@ class Message implements \Gpws\Interfaces\Message {
 
     public function addRecipients(array $recipients) {
         foreach ($recipients as $recipient) {
-            if (!($recipient instanceof \Gpws\Interfaces\WebsocketUser)) {
+            if (!($recipient instanceof \Gpws\Interfaces\WebsocketConnection)) {
                 throw new InvalidArgumentException('The array passed to addRecipients must only contain objects that implement \Gpws\Interfaces\WebsocketUser');
             }
             if (!in_array($recipient, $this->recipients)) {
@@ -24,7 +24,7 @@ class Message implements \Gpws\Interfaces\Message {
         }
     }
 
-    public function removeRecipient(\Gpws\Interfaces\WebsocketUser $recipient) {
+    public function removeRecipient(\Gpws\Interfaces\WebsocketConnection $recipient) {
         if (($key = array_search($recipient, $this->recipients)) !== false) {
             unset($this->recipients[$key]);
         }
@@ -41,7 +41,7 @@ class Message implements \Gpws\Interfaces\Message {
     function __construct($text = '', $recipients = array()) {
         $this->recipients = array();
         foreach ($recipients as $recipient) {
-            if (!($recipient instanceof \Gpws\Interfaces\WebsocketUser)) {
+            if (!($recipient instanceof \Gpws\Interfaces\WebsocketConnection)) {
                 throw new InvalidArgumentException('The recipients must implement \Gpws\Interfaces\WebsocketUser');
             }
             if (!in_array($recipient, $this->recipients)) {

@@ -3,13 +3,13 @@ namespace Gpws\Eventloop;
 
 use Gpws\Interfaces\Cli;
 use Gpws\Interfaces\EventLoop;
-use Gpws\Interfaces\UserFactory;
+use Gpws\Interfaces\ConnectionFactory;
 
 class Select implements EventLoop {
 
-    public function __construct(Cli $cli, UserFactory $userFactory) {
+    public function __construct(Cli $cli, ConnectionFactory $userFactory) {
         $this->memUsage = 0;
-        
+
         $this->cli = $cli;
         $this->userFactory = $userFactory;
 
@@ -23,7 +23,7 @@ class Select implements EventLoop {
         while (true) {
             $read = array($this->master);
             foreach ($this->users as $user) {
-                $read[] = $user->getConnection();
+                $read[] = $user->getResource();
             }
             $write = null;
             $except = null;
@@ -88,7 +88,7 @@ class Select implements EventLoop {
 
     protected function getUserByConnection($Connection) {
         foreach ($this->users as $user) {
-            if ($user->getConnection() == $Connection) {
+            if ($user->getResource() == $Connection) {
                 return $user;
             }
         }
@@ -102,7 +102,7 @@ class Select implements EventLoop {
     /** @var int Amount of memory used */
     protected $memUsage;
 
-    /** @var \Gpws\Interfaces\WebsocketUser[] */
+    /** @var \Gpws\Interfaces\WebsocketConnection[] */
     protected $users;
 
     /** @var resource */
@@ -114,7 +114,7 @@ class Select implements EventLoop {
     /** @var resource[] */
     protected $connections;
 
-    /** @var UserFactory */
+    /** @var ConnectionFactory */
     protected $userFactory;
 }
 
