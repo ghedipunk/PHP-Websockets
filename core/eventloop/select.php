@@ -4,6 +4,7 @@ namespace Gpws\Eventloop;
 use Gpws\Interfaces\Cli;
 use Gpws\Interfaces\EventLoop;
 use Gpws\Interfaces\ConnectionFactory;
+use Gpws\Interfaces\WebsocketConnection;
 
 class Select implements EventLoop {
 
@@ -79,16 +80,25 @@ class Select implements EventLoop {
   }
   */
 
+    /**
+     * Accepts a new connection
+     */
     protected function acceptConnection() {
-
         $newResource = socket_accept($this->master);
         $connection = $this->connectionFactory->createConnection($newResource);
         $this->resources[] = $newResource;
         $this->connections[] = $connection;
-
     }
 
-    protected function acceptMessage($resrouce) {
+    /**
+     * @param $resource resource
+     */
+    protected function acceptMessage($resource) {
+        $connection = $this->getConnectionByResource($resource);
+        $this->processMessage($connection);
+    }
+
+    protected function processMessage(WebsocketConnection $connection) {
 
     }
 
