@@ -22,8 +22,12 @@ class Select implements EventLoop {
         $this->memUsage = memory_get_usage();
         $this->cli->stdout("Running with Socket event loop");
 
+        if (empty($this->masters) || !is_array($this->masters)) {
+            throw new \Exception("No listening sockets have been defined");
+        }
+
         while (true) {
-            $read = array($this->master);
+            $read = $this->masters;
             foreach ($this->connections as $connection) {
                 $read[] = $connection->getResource();
             }
@@ -32,7 +36,7 @@ class Select implements EventLoop {
 
             socket_select($read, $write, $except, 1);
             foreach ($read as $activeResource) {
-                if ($activeResource == $this->master) {
+                if (in_array($activeResource, $this->masters)) {
                     $this->acceptConnection();
                 } else {
                     $this->acceptMessage($activeResource);
@@ -41,44 +45,48 @@ class Select implements EventLoop {
         }
     }
 
-
-  /*
-  public function run() {
-    $this->mem = memory_get_usage();
-    $this->stdout("RUNNING with select() method default");
-    while(true) {
-      if (empty($this->readWatchers)) {
-        $this->readers['m'] = $this->master;
-      }
-      $read = $this->readers;
-      $write = null;
-      $except = null;
-      socket_select($read,$write,$except,null);
-
-      //incoming data
-      foreach ($read as $socket) {
-        if ($socket == $this->master) {
-          $client = socket_accept($socket);
-          if (!$client) {
-            $this->stderr("Failed: socket_accept()");
-            continue;
-          } 
-          else {
-            $user=$this->connect($client);
-            $this->readWatchers[$user->id]=$client;
-            $this->stdout("Client #$this->nbclient connected. " . $client);
-          }
-        } 
-        else {
-          $start=$this->getrps();
-            $user = $this->getUserBySocket($socket);
-            $this->cb_read($user);
-          $this->getrps($start);
-        }
-      }
+    public function addMasterConnection($masterConnection) {
+        $this->masters[] = $masterConnection;
     }
-  }
-  */
+
+
+    /*
+	public function run() {
+	  $this->mem = memory_get_usage();
+	  $this->stdout("RUNNING with select() method default");
+	  while(true) {
+		if (empty($this->readWatchers)) {
+		  $this->readers['m'] = $this->master;
+		}
+		$read = $this->readers;
+		$write = null;
+		$except = null;
+		socket_select($read,$write,$except,null);
+
+		//incoming data
+		foreach ($read as $socket) {
+		  if ($socket == $this->master) {
+			$client = socket_accept($socket);
+			if (!$client) {
+			  $this->stderr("Failed: socket_accept()");
+			  continue;
+			}
+			else {
+			  $user=$this->connect($client);
+			  $this->readWatchers[$user->id]=$client;
+			  $this->stdout("Client #$this->nbclient connected. " . $client);
+			}
+		  }
+		  else {
+			$start=$this->getrps();
+			  $user = $this->getUserBySocket($socket);
+			  $this->cb_read($user);
+			$this->getrps($start);
+		  }
+		}
+	  }
+	}
+	*/
 
     /**
      * Accepts a new connection
@@ -121,8 +129,8 @@ class Select implements EventLoop {
     /** @var \Gpws\Interfaces\WebsocketConnection[] */
     protected $connections;
 
-    /** @var resource */
-    protected $master;
+    /** @var resource[] */
+    protected $masters;
 
     /** @var \Gpws\Interfaces\Cli Provides access to useful CLI related functions in a way that is aware of whether there is a terminal to write to */
     protected $cli;

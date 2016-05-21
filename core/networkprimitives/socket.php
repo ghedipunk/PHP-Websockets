@@ -1,6 +1,6 @@
 <?php
 
-namespace Gpws\Connections;
+namespace Gpws\NetworkPrimitives;
 
 use Gpws\Interfaces\Selectable;
 
