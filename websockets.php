@@ -15,6 +15,7 @@ abstract class WebSocketServer {
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
   protected $headerSecWebSocketExtensionsRequired = false;
+  protected $blockedIP                            = array();
 
   function __construct($addr, $port, $bufferLength = 2048) {
     $this->maxBufferSize = $bufferLength;
@@ -604,5 +605,13 @@ abstract class WebSocketServer {
 
     }
     echo ")\n";
+  }
+
+  protected function getUserIP($user){
+    socket_getpeername($user->socket,$address,$port);
+    return [
+        'address' =>$address,
+        'port'    =>$port
+    ];
   }
 }
