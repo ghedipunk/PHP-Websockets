@@ -614,4 +614,30 @@ abstract class WebSocketServer {
         'port'    =>$port
     ];
   }
+
+  protected function checkIP($ip){
+    return !isset($this->blockedIP[$ip]);
+  }
+
+  protected function blockIP($ip){
+    $this->blockedIP[$ip] = true;
+    /**
+     * Close all of connections with specific ip
+     */
+    $count  = count($this->users);
+    $keys   = array_keys($this->users);
+    for($i  = 0;$i < $count;$i++){
+      if($this->getUserIP($this->users[$keys[$i]])['address'] == $ip){
+        socket_close($this->users[$keys[$i]]);
+      }
+    }
+  }
+
+  protected function blockUser($user){
+    $this->blockIP($this->getUserIP($user)['address']);
+  }
+
+  protected function unblockIP($ip){
+    unset($this->blockedIP[$ip]);
+  }
 }
