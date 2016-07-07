@@ -621,6 +621,7 @@ abstract class WebSocketServer {
   protected function checkIP($ip){
     if(isset($this->blockedIP[$ip])){
       if(time() >= $this->blockedIP[$ip]){
+        $this->unblockIP($ip);
         return true;
       }
       return false;
