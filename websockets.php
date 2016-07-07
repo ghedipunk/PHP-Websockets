@@ -619,11 +619,17 @@ abstract class WebSocketServer {
   }
 
   protected function checkIP($ip){
-    return !isset($this->blockedIP[$ip]);
+    if(isset($this->blockedIP[$ip])){
+      if(time() >= $this->blockedIP[$ip]){
+        return true;
+      }
+      return false;
+    }
+    return true;
   }
 
-  protected function blockIP($ip){
-    $this->blockedIP[$ip] = true;
+  protected function blockIP($ip,$expire = 1800){
+    $this->blockedIP[$ip] = time()+$expire;//Unblock user automatically after 30 minutes (1800s)
     /**
      * Close all of connections with specific ip
      */
@@ -636,8 +642,8 @@ abstract class WebSocketServer {
     }
   }
 
-  protected function blockUser($user){
-    $this->blockIP($this->getUserIP($user)['address']);
+  protected function blockUser($user,$expire = 1800){
+    $this->blockIP($this->getUserIP($user)['address'],$expire);
   }
 
   protected function unblockIP($ip){
