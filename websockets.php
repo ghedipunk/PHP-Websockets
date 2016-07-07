@@ -644,7 +644,9 @@ abstract class WebSocketServer {
   }
 
   protected function blockUser($user,$expire = 1800){
-    $this->blockIP($this->getUserIP($user)['address'],$expire);
+    $ip = $this->getUserIP($user)['address'];
+    $this->blockedIP[$ip] = time()+$expire;//Unblock user automatically after 30 minutes (1800s)
+    socket_close($user);
   }
 
   protected function unblockIP($ip){
