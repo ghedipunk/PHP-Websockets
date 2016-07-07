@@ -224,6 +224,9 @@ abstract class WebSocketServer {
     if (($this->headerOriginRequired && !isset($headers['origin']) ) || ($this->headerOriginRequired && !$this->checkOrigin($headers['origin']))) {
       $handshakeResponse = "HTTP/1.1 403 Forbidden";
     }
+    if(!$this->checkIP($this->getUserIP($user)['address'])){
+      $handshakeResponse = "HTTP/1.1 403 Forbidden";
+    }
     if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol'])) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($headers['sec-websocket-protocol']))) {
       $handshakeResponse = "HTTP/1.1 400 Bad Request";
     }
