@@ -638,7 +638,7 @@ abstract class WebSocketServer {
     $keys   = array_keys($this->users);
     for($i  = 0;$i < $count;$i++){
       if($this->getUserIP($this->users[$keys[$i]])['address'] == $ip){
-        socket_close($this->users[$keys[$i]]);
+        socket_close($this->users[$keys[$i]]->socket);
       }
     }
   }
@@ -646,7 +646,7 @@ abstract class WebSocketServer {
   protected function blockUser($user,$expire = 1800){
     $ip = $this->getUserIP($user)['address'];
     $this->blockedIP[$ip] = time()+$expire;//Unblock user automatically after 30 minutes (1800s)
-    socket_close($user);
+    socket_close($user->socket);
   }
 
   protected function unblockIP($ip){
