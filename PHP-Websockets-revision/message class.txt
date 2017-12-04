@@ -1,5 +1,0 @@
-class message {
-	$command
-	$list_of_users
-	$message;
-}
