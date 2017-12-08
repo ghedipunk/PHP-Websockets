@@ -15,6 +15,7 @@ abstract class WebSocketServer {
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
   protected $headerSecWebSocketExtensionsRequired = false;
+  protected $blockedIP                            = array();
 
   function __construct($addr, $port, $bufferLength = 2048) {
     $this->maxBufferSize = $bufferLength;
@@ -221,6 +222,9 @@ abstract class WebSocketServer {
       $handshakeResponse = "HTTP/1.1 426 Upgrade Required\r\nSec-WebSocketVersion: 13";
     }
     if (($this->headerOriginRequired && !isset($headers['origin']) ) || ($this->headerOriginRequired && !$this->checkOrigin($headers['origin']))) {
+      $handshakeResponse = "HTTP/1.1 403 Forbidden";
+    }
+    if(!$this->checkIP($this->getUserIP($user)['address'])){
       $handshakeResponse = "HTTP/1.1 403 Forbidden";
     }
     if (($this->headerSecWebSocketProtocolRequired && !isset($headers['sec-websocket-protocol'])) || ($this->headerSecWebSocketProtocolRequired && !$this->checkWebsocProtocol($headers['sec-websocket-protocol']))) {
@@ -604,5 +608,48 @@ abstract class WebSocketServer {
 
     }
     echo ")\n";
+  }
+
+  protected function getUserIP($user){
+    socket_getpeername($user->socket,$address,$port);
+    return [
+        'address' =>$address,
+        'port'    =>$port
+    ];
+  }
+
+  protected function checkIP($ip){
+    if(isset($this->blockedIP[$ip])){
+      if(time() >= $this->blockedIP[$ip]){
+        $this->unblockIP($ip);
+        return true;
+      }
+      return false;
+    }
+    return true;
+  }
+
+  protected function blockIP($ip,$expire = 1800){
+    $this->blockedIP[$ip] = time()+$expire;//Unblock user automatically after 30 minutes (1800s)
+    /**
+     * Close all of connections with specific ip
+     */
+    $count  = count($this->users);
+    $keys   = array_keys($this->users);
+    for($i  = 0;$i < $count;$i++){
+      if($this->getUserIP($this->users[$keys[$i]])['address'] == $ip){
+        socket_close($this->users[$keys[$i]]->socket);
+      }
+    }
+  }
+
+  protected function blockUser($user,$expire = 1800){
+    $ip = $this->getUserIP($user)['address'];
+    $this->blockedIP[$ip] = time()+$expire;//Unblock user automatically after 30 minutes (1800s)
+    socket_close($user->socket);
+  }
+
+  protected function unblockIP($ip){
+    unset($this->blockedIP[$ip]);
   }
 }
