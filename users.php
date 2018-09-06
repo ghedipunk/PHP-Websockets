@@ -20,3 +20,12 @@ class WebSocketUser {
     $this->socket = $socket;
   }
 }
+
+class MyUser extends WebSocketUser {
+  public $myId;
+
+  function __construct($id, $socket, $myId) {
+    parent::__construct($id, $socket);
+    $this->myId = $myId;
+  }
+}

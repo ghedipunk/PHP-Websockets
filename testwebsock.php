@@ -4,6 +4,12 @@
 require_once('./websockets.php');
 
 class echoServer extends WebSocketServer {
+
+  function __construct($addr, $port, $bufferLength) {
+    parent::__construct($addr, $port, $bufferLength);
+    $this->userClass = 'MyUser';
+  }
+
   //protected $maxBufferSize = 1048576; //1MB... overkill for an echo server, but potentially plausible for other applications.
   
   protected function process ($user, $message) {
