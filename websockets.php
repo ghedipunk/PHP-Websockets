@@ -1,7 +1,7 @@
 <?php
 
 //require_once('./daemonize.php');
-require_once('./users.php');
+require_once(__DIR__ . '/users.php');
 
 abstract class WebSocketServer {
 
@@ -15,6 +15,9 @@ abstract class WebSocketServer {
   protected $headerOriginRequired                 = false;
   protected $headerSecWebSocketProtocolRequired   = false;
   protected $headerSecWebSocketExtensionsRequired = false;
+  
+  protected $tv_sec = 1;
+  protected $tv_usec = 0;
 
   function __construct($addr, $port, $bufferLength = 2048) {
     $this->maxBufferSize = $bufferLength;
@@ -86,7 +89,7 @@ abstract class WebSocketServer {
       $write = $except = null;
       $this->_tick();
       $this->tick();
-      @socket_select($read,$write,$except,1);
+      @socket_select($read,$write,$except, $this->tv_sec, $this->tv_usec);
       foreach ($read as $socket) {
         if ($socket == $this->master) {
           $client = socket_accept($socket);
