@@ -5,7 +5,7 @@ require_once('./websockets.php');
 
 class echoServer extends WebSocketServer {
 
-  function __construct($addr, $port, $bufferLength) {
+  function __construct($addr, $port, $bufferLength = 2048) {
     parent::__construct($addr, $port, $bufferLength);
     $this->userClass = 'MyUser';
   }
