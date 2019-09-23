@@ -130,7 +130,7 @@ abstract class WebSocketServer {
         }
 
         $buffer = fread($socket, $this->maxBufferSize);
-        $numBytes = count($buffer);
+        $numBytes = strlen($buffer);
         if ($numBytes == 0) {
           $this->disconnect($socket);
           $this->stderr("Client disconnected. TCP connection lost: " . $socket);
